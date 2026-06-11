@@ -1,0 +1,2674 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>JuiceWRLDLE — Guess the Juice WRLD Song</title>
+<meta name="description" content="Hear a 3-second clip and guess the Juice WRLD song. Every wrong guess gives you 2 more seconds. How many can you get?" />
+<meta name="robots" content="index, follow" />
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"JuiceWRLDLE","url":"https://anicodle.com/juicewrldle/","description":"Hear a 3-second clip and guess the Juice WRLD song.","applicationCategory":"Game","operatingSystem":"Any","isPartOf":{"@type":"WebSite","name":"AniCodle","url":"https://anicodle.com/"}}</script>
+<link rel="manifest" href="/site.webmanifest">
+<link rel="canonical" href="https://anicodle.com/juicewrldle/" />
+<meta property="og:title" content="JuiceWRLDLE — Guess the Juice WRLD Song" />
+<meta property="og:description" content="3 seconds. 5 guesses. Can you name that Juice WRLD song?" />
+<meta property="og:url" content="https://anicodle.com/juicewrldle/" />
+<meta property="og:site_name" content="AniCodle">
+<meta property="og:type" content="website" />
+<meta name="twitter:card" content="summary" />
+<meta name="twitter:description" content="Hear a 3-second clip and guess the Juice WRLD song. Every wrong guess gives you more time.">
+<meta name="twitter:title" content="JuiceWRLDLE" />
+<link rel="icon" type="image/x-icon" href="/favicon.ico" />
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-2VLH2ZVY4S"></script>
+<script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-2VLH2ZVY4S');</script>
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1350938260860067" crossorigin="anonymous"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet" />
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:         #0b0b0f;
+  --surface:    #13131a;
+  --surface2:   #1d1d28;
+  --surface3:   #252535;
+  --border:     rgba(255,255,255,0.07);
+  --border-hi:  rgba(255,255,255,0.15);
+  --text:       #f0eee8;
+  --muted:      #7a7a8c;
+  --hint:       #4a4a5c;
+  --accent:     #e8c840;
+  --accent2:    #e05c3a;
+  --win:        #3adb76;
+  --lose:       #e05c3a;
+  /* JuiceWRLDLE signature: electric violet */
+  --juice:      #b06aff;
+  --juice2:     #7c3aed;
+  --juice-glow: rgba(176,106,255,0.25);
+  --juice-dim:  rgba(176,106,255,0.1);
+  --font-disp:  'Bebas Neue', sans-serif;
+  --font-body:  'DM Sans', sans-serif;
+  --radius:     4px;
+  --radius-lg:  8px;
+  --shadow:     0 4px 20px rgba(0,0,0,0.5);
+}
+
+html, body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* subtle radial glow behind everything */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 60% 40% at 50% 0%, rgba(176,106,255,0.06) 0%, transparent 60%),
+    radial-gradient(ellipse 40% 60% at 80% 100%, rgba(124,58,237,0.04) 0%, transparent 55%);
+  z-index: 0;
+}
+
+/* ── HEADER ── */
+#ac-header {
+  position: sticky; top: 0; z-index: 50;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border-hi);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 1.5rem; height: 52px;
+}
+.ac-logo {
+  text-decoration: none;
+  font-family: var(--font-disp);
+  font-size: 1.55rem;
+  letter-spacing: 0.08em;
+  line-height: 1;
+}
+.ac-logo .ani   { color: var(--accent); }
+.ac-logo .codle { color: var(--accent2); }
+.ac-header-right { display: flex; align-items: center; gap: 0.6rem; }
+.ac-kofi {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 0 12px; height: 28px; border-radius: var(--radius);
+  font-size: 11.5px; font-weight: 500;
+  background: #ff5e5b; color: #fff;
+  border: none; cursor: pointer; font-family: 'Bebas Neue', sans-serif; letter-spacing: 0.06em;
+  text-decoration: none; transition: opacity 0.15s;
+}
+.ac-kofi:hover { opacity: 0.85; }
+.ac-adfree {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 0 12px; height: 28px; border-radius: var(--radius);
+  font-size: 11.5px; font-weight: 500;
+  background: transparent; color: var(--accent);
+  border: 1px solid rgba(232,200,64,0.4);
+  cursor: pointer; font-family: 'Bebas Neue', sans-serif; letter-spacing: 0.06em; transition: background 0.15s;
+}
+.ac-adfree:hover { background: rgba(232,200,64,0.12); }
+.ac-adfree-active {
+  display: none; align-items: center; gap: 5px;
+  padding: 0 12px; height: 28px; border-radius: var(--radius);
+  font-size: 11.5px; font-weight: 500;
+  background: rgba(58,219,118,0.1); color: var(--win);
+  border: 1px solid rgba(58,219,118,0.3); font-family: 'Bebas Neue', sans-serif; letter-spacing: 0.06em;
+}
+
+/* ── MAIN LAYOUT ── */
+main {
+  position: relative; z-index: 1;
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 2rem 2rem 5rem;
+}
+
+/* ── GAME TITLE ── */
+.game-title-wrap {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+.game-title {
+  font-family: var(--font-disp);
+  font-size: clamp(2.8rem, 10vw, 4.5rem);
+  letter-spacing: 0.06em;
+  line-height: 1;
+  color: var(--juice);
+  text-shadow: 0 0 40px var(--juice-glow);
+}
+.game-title span { color: var(--text); }
+.game-sub {
+  font-size: 0.78rem;
+  color: var(--muted);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-top: 0.4rem;
+}
+
+/* ── PLAYER CARD ── */
+.player-card {
+  background: var(--surface);
+  border: 1px solid var(--border-hi);
+  border-radius: var(--radius-lg);
+  padding: 2rem 1.5rem;
+  margin-bottom: 1.5rem;
+  box-shadow: var(--shadow);
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+/* decorative top strip in juice color */
+.player-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--juice), transparent);
+  opacity: 0.6;
+}
+
+.round-badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 3px 12px; border-radius: 3px;
+  font-size: 11px; font-weight: 500; letter-spacing: 0.07em;
+  text-transform: uppercase;
+  background: var(--juice-dim);
+  color: var(--juice);
+  border: 1px solid rgba(176,106,255,0.3);
+  margin-bottom: 1.25rem;
+}
+
+/* ── WAVEFORM ── */
+.waveform-wrap {
+  width: 100%; height: 64px;
+  margin-bottom: 1.5rem;
+  display: flex; align-items: center; justify-content: center;
+  gap: 3px; overflow: hidden;
+}
+.wave-bar {
+  width: 4px; border-radius: 2px;
+  background: var(--surface3);
+  transition: height 0.08s, background 0.15s;
+  flex-shrink: 0;
+}
+.wave-bar.active { background: var(--juice); }
+.wave-bar.played { background: rgba(176,106,255,0.35); }
+
+/* ── TIMER RING ── */
+.timer-wrap {
+  position: relative; width: 72px; height: 72px;
+  margin: 0 auto 1.25rem;
+}
+.timer-svg { transform: rotate(-90deg); }
+.timer-bg  { fill: none; stroke: var(--surface3); stroke-width: 4; }
+.timer-ring {
+  fill: none; stroke: var(--juice); stroke-width: 4;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.1s linear;
+}
+.timer-text {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-disp); font-size: 20px; color: var(--text);
+}
+
+/* ── PLAY BUTTON ── */
+.play-btn {
+  width: 64px; height: 64px; border-radius: 50%;
+  border: none;
+  background: var(--juice);
+  color: #0b0b0f;
+  font-size: 24px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 0.75rem;
+  transition: opacity 0.15s, transform 0.1s, box-shadow 0.2s;
+  box-shadow: 0 4px 24px var(--juice-glow);
+}
+.play-btn:hover:not(:disabled) { opacity: 0.88; box-shadow: 0 6px 32px var(--juice-glow); }
+.play-btn:active:not(:disabled) { transform: scale(0.95); }
+.play-btn:disabled { opacity: 0.35; cursor: not-allowed; box-shadow: none; }
+
+.play-hint {
+  font-size: 11.5px; color: var(--muted);
+  letter-spacing: 0.03em; min-height: 18px;
+}
+
+/* ── CLIP LENGTH PILLS ── */
+.clip-pill-row {
+  display: flex; justify-content: center; gap: 6px;
+  margin-top: 1rem;
+}
+.clip-pill {
+  padding: 3px 10px; border-radius: 3px;
+  font-size: 10px; font-weight: 600; letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border: 1px solid var(--border-hi);
+  background: var(--surface2); color: var(--hint);
+}
+.clip-pill.done  { background: rgba(176,106,255,0.15); border-color: rgba(176,106,255,0.4); color: var(--juice); }
+.clip-pill.now   { background: var(--juice-dim); border-color: var(--juice); color: var(--juice); }
+
+/* ── GUESS PIPS ── */
+.pip-row {
+  display: flex; gap: 7px; margin-bottom: 1.5rem;
+}
+.pip {
+  flex: 1; height: 5px; border-radius: 3px;
+  background: var(--surface2); border: 1px solid var(--border);
+  transition: background 0.35s, border-color 0.35s;
+}
+.pip.wrong { background: rgba(224,92,58,0.5); border-color: var(--lose); }
+.pip.right { background: rgba(58,219,118,0.6); border-color: var(--win); }
+
+/* ── CLUE CARDS ── */
+.clues-wrap {
+  display: flex; flex-direction: column; gap: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+.clue-card {
+  display: flex; align-items: center; gap: 0.75rem;
+  padding: 0.7rem 1rem;
+  background: var(--surface);
+  border: 1px solid var(--border-hi);
+  border-radius: var(--radius);
+  animation: clueIn 0.3s ease both;
+}
+@keyframes clueIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes fadeOut {
+  to { opacity: 0; }
+}
+.clue-icon {
+  font-size: 1.1rem; flex-shrink: 0; width: 1.5rem; text-align: center;
+}
+.clue-label {
+  font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em;
+  color: var(--muted); margin-bottom: 0.1rem;
+}
+.clue-value {
+  font-family: var(--font-disp); font-size: 1rem;
+  letter-spacing: 0.06em; color: var(--juice);
+}
+
+/* ── GUESS INPUT ── */
+.guess-section { margin-bottom: 1.25rem; }
+.section-label {
+  font-size: 10.5px; font-weight: 500; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--muted); margin-bottom: 0.5rem;
+}
+.input-row { display: flex; gap: 8px; }
+#songInput {
+  flex: 1; height: 42px; padding: 0 14px;
+  background: var(--surface2);
+  border: 1px solid var(--border-hi);
+  border-radius: var(--radius);
+  font-family: var(--font-body); font-size: 14px; color: var(--text);
+  outline: none; transition: border-color 0.15s;
+}
+#songInput:focus {
+  border-color: var(--juice);
+  box-shadow: 0 0 0 3px rgba(176,106,255,0.1);
+}
+#songInput::placeholder { color: var(--hint); }
+#songInput:disabled { opacity: 0.5; cursor: not-allowed; }
+
+#guessBtn {
+  height: 42px; padding: 0 18px;
+  background: var(--juice); border: none;
+  border-radius: var(--radius);
+  font-family: var(--font-disp); font-size: 0.95rem;
+  letter-spacing: 0.08em; color: #0b0b0f;
+  cursor: pointer; white-space: nowrap;
+  transition: opacity 0.15s, transform 0.1s;
+}
+#guessBtn:hover:not(:disabled) { opacity: 0.88; }
+#guessBtn:active:not(:disabled) { transform: scale(0.97); }
+#guessBtn:disabled {
+  background: var(--surface2); color: var(--hint);
+  cursor: not-allowed;
+}
+
+.skip-row { display: flex; justify-content: center; margin-top: 0.6rem; }
+
+/* ── AUTOCOMPLETE ── */
+.ac-wrap { position: relative; flex: 1; }
+.ac-wrap #songInput { width: 100%; }
+.ac-dropdown {
+  position: absolute; top: calc(100% + 4px); left: 0; right: 0;
+  background: var(--surface2);
+  border: 1px solid var(--border-hi);
+  border-radius: var(--radius);
+  max-height: 260px; overflow-y: auto;
+  z-index: 200;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+}
+.ac-item {
+  padding: 9px 14px;
+  font-size: 13px; color: var(--text);
+  cursor: pointer;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 8px;
+  transition: background 0.1s;
+}
+.ac-item:last-child { border-bottom: none; }
+.ac-item:hover, .ac-item.hi {
+  background: var(--juice-dim); color: var(--juice);
+}
+.ac-item-name { flex: 1; font-weight: 500; }
+.ac-item-cat {
+  font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--muted); flex-shrink: 0;
+  padding: 2px 6px; border-radius: 2px;
+  background: var(--surface3);
+}
+.ac-msg {
+  padding: 10px 14px; font-size: 12.5px;
+  color: var(--muted); text-align: center;
+}
+#skipBtn {
+  padding: 5px 14px;
+  border: 1px solid var(--border-hi);
+  border-radius: var(--radius);
+  background: transparent; color: var(--muted);
+  font-family: var(--font-body); font-size: 12px;
+  cursor: pointer; transition: color 0.15s, border-color 0.15s;
+}
+#skipBtn:hover:not(:disabled) { color: var(--juice); border-color: rgba(176,106,255,0.4); }
+#skipBtn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+/* ── GUESS HISTORY ── */
+.history-wrap { margin-bottom: 1.5rem; }
+.history-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-bottom: 5px;
+  font-size: 13px;
+}
+.history-num {
+  width: 20px; height: 20px; border-radius: 50%;
+  background: var(--surface2);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; font-weight: 600; color: var(--muted); flex-shrink: 0;
+}
+.history-title { flex: 1; color: var(--text); }
+
+/* ── RESULT BANNER ── */
+.result-banner {
+  text-align: center;
+  padding: 1.5rem;
+  border-radius: var(--radius-lg);
+  margin-bottom: 1.5rem;
+  border: 1px solid;
+  animation: clueIn 0.35s ease both;
+}
+.result-banner h2 {
+  font-family: var(--font-disp);
+  font-size: 2rem; letter-spacing: 0.06em; margin-bottom: 0.35rem;
+}
+.result-banner p { font-size: 13.5px; line-height: 1.6; }
+.result-banner b { font-weight: 600; }
+.result-banner.win {
+  background: rgba(58,219,118,0.08);
+  border-color: rgba(58,219,118,0.3);
+  color: var(--win);
+}
+.result-banner.lose {
+  background: rgba(224,92,58,0.08);
+  border-color: rgba(224,92,58,0.3);
+  color: #e87878;
+}
+
+/* song art / era image on result */
+.result-meta {
+  display: flex; flex-direction: column; align-items: center; gap: 0.75rem;
+  margin-top: 1rem;
+}
+.result-era-img {
+  width: 72px; height: 72px; border-radius: var(--radius);
+  object-fit: cover;
+  border: 1px solid var(--border-hi);
+  opacity: 0.85;
+}
+.result-details {
+  font-size: 12px; color: inherit; opacity: 0.75; line-height: 1.7;
+}
+
+/* share + next buttons */
+.result-actions {
+  display: flex; gap: 8px; justify-content: center; margin-top: 1rem; flex-wrap: wrap;
+}
+.btn-share {
+  padding: 7px 18px;
+  border: 1px solid currentColor;
+  border-radius: var(--radius);
+  background: transparent;
+  font-family: var(--font-body); font-size: 12.5px; font-weight: 500;
+  cursor: pointer; color: inherit; opacity: 0.85;
+  transition: opacity 0.15s;
+}
+.btn-share:hover { opacity: 1; }
+.btn-next {
+  padding: 7px 18px;
+  border: none; border-radius: var(--radius);
+  background: var(--juice); color: #0b0b0f;
+  font-family: var(--font-disp); font-size: 0.9rem; letter-spacing: 0.06em;
+  cursor: pointer; transition: opacity 0.15s;
+}
+.btn-next:hover { opacity: 0.88; }
+
+/* ── AD SLOT ── */
+.ad-slot {
+  width: 100%; margin-bottom: 1.5rem;
+  border-radius: var(--radius); border: 1px dashed rgba(255,255,255,0.07);
+  background: rgba(255,255,255,0.02);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--hint); font-size: 10.5px; letter-spacing: 0.05em;
+  text-transform: uppercase; opacity: 0.5;
+}
+.ad-slot-leaderboard { height: 90px; }
+
+/* ── STATS CARD ── */
+.stats-card {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1px;
+  background: var(--border-hi);
+  border: 1px solid var(--border-hi);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  margin-bottom: 1.25rem;
+}
+.stat-box {
+  background: var(--surface);
+  padding: 0.85rem 0.5rem;
+  text-align: center;
+}
+.stat-num {
+  font-family: var(--font-disp);
+  font-size: 1.6rem;
+  letter-spacing: 0.04em;
+  color: var(--juice);
+  line-height: 1;
+}
+.stat-lbl {
+  font-size: 10px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-top: 4px;
+}
+
+/* ── STREAK BADGE (result banner) ── */
+.streak-badge {
+  display: inline-block;
+  margin: 0.6rem auto 0;
+  padding: 4px 14px;
+  border-radius: 3px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  background: rgba(58,219,118,0.15);
+  border: 1px solid rgba(58,219,118,0.35);
+  color: var(--win);
+}
+
+/* ── STREAK PILL (legacy, kept for safety) ── */
+.streak-pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 12px; border-radius: 3px;
+  border: 1px solid var(--border-hi);
+  background: var(--surface2);
+  font-size: 12.5px; color: var(--muted);
+}
+.streak-pill b { color: var(--text); font-weight: 600; }
+
+/* ── SPINNER ── */
+@keyframes spin { to { transform: rotate(360deg); } }
+.spinner {
+  width: 28px; height: 28px;
+  border: 2px solid var(--surface3);
+  border-top-color: var(--juice);
+  border-radius: 50%;
+  animation: spin 0.75s linear infinite;
+  margin: 0 auto 1rem;
+}
+.loading-wrap { text-align: center; padding: 3rem 1rem; color: var(--muted); font-size: 13.5px; }
+
+/* ── FILTER PANEL ── */
+.filter-panel {
+  background: var(--surface);
+  border: 1px solid var(--border-hi);
+  border-radius: var(--radius-lg);
+  padding: 1rem 1.25rem;
+  margin-bottom: 1.25rem;
+}
+.filter-header {
+  display: flex; align-items: center; justify-content: space-between;
+  cursor: pointer; user-select: none;
+}
+.filter-title {
+  font-family: var(--font-disp);
+  font-size: 0.95rem; letter-spacing: 0.07em;
+  color: var(--juice);
+}
+.filter-chevron {
+  font-size: 0.7rem; color: var(--muted);
+  transition: transform 0.2s;
+}
+.filter-panel.open .filter-chevron { transform: rotate(90deg); }
+.filter-body {
+  display: none;
+  margin-top: 0.9rem;
+  border-top: 1px solid var(--border);
+  padding-top: 0.9rem;
+  display: none;
+  flex-direction: column;
+  gap: 1rem;
+}
+.filter-panel.open .filter-body { display: flex; }
+.filter-group-label {
+  font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em;
+  color: var(--muted); margin-bottom: 0.5rem; font-weight: 600;
+}
+.filter-chips {
+  display: flex; flex-wrap: wrap; gap: 0.4rem;
+}
+.filter-chip {
+  padding: 4px 12px; border-radius: 3px;
+  font-size: 12px; font-family: var(--font-body);
+  border: 1px solid var(--border-hi);
+  background: var(--surface2); color: var(--muted);
+  cursor: pointer; transition: all 0.15s;
+  white-space: nowrap;
+}
+.filter-chip:hover { border-color: var(--juice); color: var(--juice); }
+.filter-chip.active {
+  background: var(--juice-dim);
+  border-color: var(--juice);
+  color: var(--juice);
+  font-weight: 600;
+}
+.filter-active-badge {
+  display: inline-block;
+  padding: 1px 7px; border-radius: 2px;
+  font-size: 10px; font-weight: 600;
+  background: var(--juice-dim); color: var(--juice);
+  border: 1px solid rgba(176,106,255,0.3);
+  margin-left: 0.5rem;
+  vertical-align: middle;
+}
+.era-list {
+  max-height: 160px; overflow-y: auto;
+  display: flex; flex-wrap: wrap; gap: 0.35rem;
+}
+/* ── HOW TO PLAY OVERLAY ── */
+.howto-overlay {
+  position: fixed; inset: 0; z-index: 9000;
+  background: rgba(5, 5, 10, 0.82);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  display: flex; align-items: center; justify-content: center;
+  padding: 1.5rem;
+  animation: fadeIn 0.25s ease both;
+}
+.howto-card {
+  background: var(--surface);
+  border: 1px solid var(--border-hi);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 24px 64px rgba(0,0,0,0.7);
+  max-width: 420px; width: 100%;
+  overflow: hidden;
+  animation: slideUp 0.3s cubic-bezier(0.34,1.2,0.64,1) both;
+}
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.howto-top {
+  background: linear-gradient(135deg, rgba(176,106,255,0.15), rgba(124,58,237,0.08));
+  border-bottom: 1px solid var(--border-hi);
+  padding: 1.5rem 1.5rem 1.25rem;
+  text-align: center;
+}
+.howto-game-title {
+  font-family: var(--font-disp);
+  font-size: 2.2rem; letter-spacing: 0.08em;
+  color: var(--juice);
+  text-shadow: 0 0 30px var(--juice-glow);
+  line-height: 1;
+  margin-bottom: 0.3rem;
+}
+.howto-game-title span { color: var(--text); }
+.howto-tagline {
+  font-size: 12px; color: var(--muted);
+  letter-spacing: 0.06em; text-transform: uppercase;
+}
+.howto-body { padding: 1.25rem 1.5rem; }
+.howto-steps {
+  display: flex; flex-direction: column; gap: 0.85rem;
+  margin-bottom: 1.25rem;
+}
+.howto-step {
+  display: flex; align-items: flex-start; gap: 0.85rem;
+}
+.howto-step-icon {
+  width: 32px; height: 32px; border-radius: var(--radius);
+  background: var(--juice-dim);
+  border: 1px solid rgba(176,106,255,0.3);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1rem; flex-shrink: 0;
+}
+.howto-step-text { flex: 1; }
+.howto-step-title {
+  font-size: 13px; font-weight: 600; color: var(--text);
+  margin-bottom: 2px;
+}
+.howto-step-desc {
+  font-size: 11.5px; color: var(--muted); line-height: 1.5;
+}
+.howto-step-desc b { color: var(--text); font-weight: 500; }
+.howto-clue-row {
+  display: flex; flex-wrap: wrap; gap: 5px;
+  margin-top: 0.7rem; margin-bottom: 1rem;
+  padding: 0.75rem;
+  background: var(--surface2);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+}
+.howto-clue-pill {
+  font-size: 10.5px; padding: 3px 9px; border-radius: 3px;
+  background: var(--surface3);
+  border: 1px solid var(--border-hi);
+  color: var(--muted);
+  display: flex; align-items: center; gap: 4px;
+}
+.howto-clue-pill .n {
+  width: 14px; height: 14px; border-radius: 50%;
+  background: var(--juice-dim);
+  border: 1px solid rgba(176,106,255,0.3);
+  color: var(--juice); font-size: 9px; font-weight: 700;
+  display: inline-flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.howto-start-btn {
+  width: 100%; padding: 11px;
+  background: var(--juice); border: none;
+  border-radius: var(--radius);
+  font-family: var(--font-disp); font-size: 1.1rem;
+  letter-spacing: 0.08em; color: #0b0b0f;
+  cursor: pointer; transition: opacity 0.15s;
+}
+.howto-start-btn:hover { opacity: 0.88; }
+.howto-footer {
+  text-align: center; margin-top: 0.75rem;
+  font-size: 11px; color: var(--hint);
+}
+
+/* ── SHARE STATS BUTTON ── */
+.share-stats-btn {
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  width: 100%; padding: 7px;
+  margin-top: 0.65rem;
+  border: 1px solid var(--border-hi);
+  border-radius: var(--radius);
+  background: transparent; color: var(--muted);
+  font-family: var(--font-body); font-size: 12px;
+  cursor: pointer; transition: all 0.15s;
+}
+.share-stats-btn:hover {
+  border-color: var(--juice); color: var(--juice);
+  background: var(--juice-dim);
+}
+
+/* ── CUSTOM SETTINGS SLIDERS ── */
+.custom-settings {
+  margin-top: 0.75rem;
+  padding: 0.9rem;
+  background: var(--surface2);
+  border: 1px solid var(--border-hi);
+  border-radius: var(--radius);
+  display: flex; flex-direction: column; gap: 0.75rem;
+}
+.custom-row {
+  display: flex; align-items: center; gap: 0.75rem;
+}
+.custom-lbl {
+  font-size: 11px; color: var(--muted);
+  text-transform: uppercase; letter-spacing: 0.07em;
+  width: 90px; flex-shrink: 0;
+}
+.custom-slider {
+  flex: 1; -webkit-appearance: none; appearance: none;
+  height: 4px; border-radius: 2px; outline: none; cursor: pointer;
+  background: linear-gradient(to right, var(--juice) 0%, var(--juice) var(--pct,50%), var(--surface3) var(--pct,50%));
+}
+.custom-slider::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 14px; height: 14px;
+  border-radius: 50%; background: var(--juice);
+  box-shadow: 0 0 5px var(--juice-glow); cursor: pointer;
+}
+.custom-slider::-moz-range-thumb {
+  width: 14px; height: 14px; border-radius: 50%;
+  background: var(--juice); border: none; cursor: pointer;
+}
+.custom-val {
+  font-family: var(--font-disp); font-size: 0.95rem;
+  color: var(--juice); width: 32px; text-align: right;
+  flex-shrink: 0; font-variant-numeric: tabular-nums;
+}
+
+/* ── VOLUME SLIDER ── */
+.vol-wrap {
+  display: flex; align-items: center; gap: 0.6rem;
+  padding: 0.6rem 1rem;
+  background: var(--surface2);
+  border: 1px solid var(--border-hi);
+  border-radius: var(--radius);
+  margin-bottom: 1rem;
+}
+.vol-icon { font-size: 1rem; flex-shrink: 0; cursor: pointer; user-select: none; }
+.vol-slider {
+  flex: 1; -webkit-appearance: none; appearance: none;
+  height: 4px; border-radius: 2px;
+  background: linear-gradient(to right, var(--juice) 0%, var(--juice) var(--vol-pct, 80%), var(--surface3) var(--vol-pct, 80%));
+  outline: none; cursor: pointer;
+}
+.vol-slider::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none;
+  width: 14px; height: 14px; border-radius: 50%;
+  background: var(--juice);
+  box-shadow: 0 0 6px var(--juice-glow);
+  cursor: pointer;
+}
+.vol-slider::-moz-range-thumb {
+  width: 14px; height: 14px; border-radius: 50%;
+  background: var(--juice); border: none;
+  box-shadow: 0 0 6px var(--juice-glow); cursor: pointer;
+}
+.vol-pct {
+  font-size: 11px; color: var(--muted);
+  width: 32px; text-align: right; flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── FEEDBACK ── */
+.feedback-bar-btn {
+  display: block;
+  width: calc(100% - 2.5rem);
+  max-width: 900px;
+  margin: 0 auto 1.5rem;
+  padding: 0.7rem 1rem;
+  background: var(--surface);
+  border: 1px dashed rgba(176,106,255,0.35);
+  border-radius: var(--radius);
+  color: var(--muted);
+  font-family: var(--font-body);
+  font-size: 13px;
+  cursor: pointer;
+  text-align: center;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+  letter-spacing: 0.01em;
+}
+.feedback-bar-btn:hover {
+  border-color: var(--juice);
+  color: var(--juice);
+  background: var(--juice-dim);
+}
+.feedback-overlay {
+  position: fixed; inset: 0; z-index: 9000;
+  background: rgba(5,5,10,0.82);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  display: flex; align-items: center; justify-content: center;
+  padding: 1.5rem;
+  animation: fadeIn 0.2s ease both;
+}
+.feedback-card {
+  background: var(--surface);
+  border: 1px solid var(--border-hi);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 24px 64px rgba(0,0,0,0.7);
+  max-width: 400px; width: 100%;
+  overflow: hidden;
+  animation: slideUp 0.25s cubic-bezier(0.34,1.2,0.64,1) both;
+}
+.feedback-header {
+  padding: 1.1rem 1.25rem;
+  border-bottom: 1px solid var(--border-hi);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.feedback-title {
+  font-family: var(--font-disp);
+  font-size: 1.1rem; letter-spacing: 0.07em; color: var(--juice);
+}
+.feedback-close {
+  width: 28px; height: 28px; border-radius: 50%;
+  border: 1px solid var(--border-hi);
+  background: transparent; color: var(--muted);
+  cursor: pointer; font-size: 14px;
+  display: flex; align-items: center; justify-content: center;
+  transition: color 0.15s;
+}
+.feedback-close:hover { color: var(--text); }
+.feedback-body { padding: 1.25rem; }
+.feedback-type-row {
+  display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 1rem;
+}
+.fb-type {
+  padding: 4px 12px; border-radius: 4px;
+  font-size: 11.5px; font-family: var(--font-body);
+  border: 1px solid var(--border-hi);
+  background: var(--surface2); color: var(--muted);
+  cursor: pointer; transition: all 0.15s;
+}
+.fb-type.active {
+  background: var(--juice-dim);
+  border-color: var(--juice); color: var(--juice);
+}
+.feedback-label {
+  font-size: 10.5px; text-transform: uppercase;
+  letter-spacing: 0.08em; color: var(--muted);
+  font-weight: 600; margin-bottom: 0.4rem;
+}
+.feedback-textarea {
+  width: 100%; min-height: 100px;
+  padding: 10px 12px; resize: vertical;
+  background: var(--surface2);
+  border: 1px solid var(--border-hi);
+  border-radius: var(--radius);
+  color: var(--text); font-family: var(--font-body); font-size: 13px;
+  outline: none; line-height: 1.5;
+  transition: border-color 0.15s;
+}
+.feedback-textarea:focus { border-color: var(--juice); }
+.feedback-textarea::placeholder { color: var(--hint); }
+.feedback-submit {
+  width: 100%; padding: 10px;
+  margin-top: 0.9rem;
+  background: var(--juice); border: none;
+  border-radius: var(--radius);
+  font-family: var(--font-disp); font-size: 1rem;
+  letter-spacing: 0.07em; color: #0b0b0f;
+  cursor: pointer; transition: opacity 0.15s;
+}
+.feedback-submit:hover:not(:disabled) { opacity: 0.88; }
+.feedback-submit:disabled { opacity: 0.4; cursor: not-allowed; }
+.feedback-footer {
+  font-size: 10.5px; color: var(--hint);
+  text-align: center; margin-top: 0.6rem; line-height: 1.5;
+}
+
+/* ── TOAST ── */
+.toast {
+  position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%);
+  background: var(--surface); border: 1px solid var(--border-hi);
+  color: var(--text); padding: 9px 20px; border-radius: 20px;
+  font-size: 13px; z-index: 999;
+  opacity: 0; transition: opacity 0.2s;
+  pointer-events: none;
+}
+
+/* ── FOOTER ── */
+#ac-site-footer {
+  width: 100%; background: #0d0d12;
+  border-top: 1px solid rgba(255,255,255,0.07);
+  padding: 0.75rem 1.5rem;
+  display: flex; align-items: center; justify-content: center;
+  gap: 1.5rem; flex-wrap: wrap;
+  font-family: var(--font-body); font-size: 0.75rem; color: var(--hint);
+  position: relative; z-index: 10;
+}
+#ac-site-footer a { color: var(--muted); text-decoration: none; transition: color 0.15s; }
+#ac-site-footer a:hover { color: var(--accent); }
+
+/* ── ACTION ROW (I Know This + Skip) ── */
+.action-row {
+  display: flex; gap: 8px; justify-content: center; margin-top: 0.6rem;
+}
+.action-btn {
+  padding: 5px 14px; border-radius: var(--radius);
+  border: 1px solid var(--border-hi);
+  background: transparent; color: var(--muted);
+  font-family: var(--font-body); font-size: 12px;
+  cursor: pointer; transition: color 0.15s, border-color 0.15s;
+}
+.action-btn:hover:not(:disabled) { color: var(--juice); border-color: rgba(176,106,255,0.4); }
+.action-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+.action-btn.skip:hover:not(:disabled) { color: var(--accent); border-color: rgba(232,200,64,0.4); }
+
+/* ── DISTRIBUTION CHART ── */
+.stats-detail {
+  background: var(--surface);
+  border: 1px solid var(--border-hi);
+  border-radius: var(--radius-lg);
+  padding: 1rem 1.25rem;
+  margin-bottom: 1rem;
+}
+.stats-detail-tabs {
+  display: flex; gap: 6px; margin-bottom: 0.9rem;
+}
+.sdt {
+  padding: 4px 12px; border-radius: 4px;
+  font-family: var(--font-body); font-size: 11.5px;
+  border: 1px solid var(--border-hi);
+  background: var(--surface2); color: var(--muted);
+  cursor: pointer; transition: all 0.15s;
+}
+.sdt.active { background: var(--juice-dim); border-color: var(--juice); color: var(--juice); }
+.stat-tab { display: none; }
+.stat-tab.active { display: block; }
+.dist-row {
+  display: flex; align-items: center; gap: 8px;
+  margin-bottom: 5px;
+}
+.dist-label {
+  width: 14px; text-align: right;
+  font-family: var(--font-disp); font-size: 0.9rem;
+  color: var(--muted); flex-shrink: 0;
+}
+.dist-bar-wrap {
+  flex: 1; height: 16px;
+  background: var(--surface2);
+  border-radius: 2px; overflow: hidden;
+}
+.dist-bar {
+  height: 100%; min-width: 4px;
+  background: var(--surface3);
+  border-radius: 2px;
+  transition: width 0.4s ease;
+}
+.dist-bar.best { background: var(--juice); }
+.dist-count {
+  width: 24px; text-align: right;
+  font-size: 11px; color: var(--muted); flex-shrink: 0;
+}
+.wwt-info { border-top: 1px solid var(--border); padding-top: 0.5rem; margin-top: 0.25rem; }
+
+/* ── WHAT WAS THAT ── */
+.wwt-details {
+  margin-top: 0.9rem;
+  border: 1px solid var(--border-hi);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.wwt-summary {
+  padding: 0.6rem 0.9rem;
+  font-size: 12.5px; font-weight: 600;
+  color: var(--muted); cursor: pointer;
+  list-style: none;
+  background: var(--surface2);
+  transition: color 0.15s;
+}
+.wwt-summary::-webkit-details-marker { display: none; }
+.wwt-summary:hover { color: var(--text); }
+.wwt-details[open] .wwt-summary { color: var(--text); border-bottom: 1px solid var(--border-hi); }
+.wwt-body { padding: 0.75rem 0.9rem; background: var(--surface); }
+.wwt-row {
+  display: flex; gap: 0.5rem; margin-bottom: 0.4rem;
+  font-size: 12px; line-height: 1.5;
+}
+.wwt-lbl {
+  flex-shrink: 0; width: 90px;
+  color: var(--muted); font-weight: 500;
+}
+.wwt-val { color: var(--text); flex: 1; }
+
+/* ── DIFFICULTY CHIPS (inside filter panel) ── */
+.diff-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.diff-chip {
+  padding: 5px 14px; border-radius: 3px;
+  font-family: var(--font-body); font-size: 12px;
+  border: 1px solid var(--border-hi);
+  background: var(--surface2); color: var(--muted);
+  cursor: pointer; transition: all 0.15s;
+}
+.diff-chip:hover { color: var(--text); }
+.diff-chip.easy.active   { background: rgba(58,219,118,0.12); border-color: var(--win);   color: var(--win); }
+.diff-chip.normal.active { background: var(--juice-dim);       border-color: var(--juice); color: var(--juice); }
+.diff-chip.hard.active   { background: rgba(224,92,58,0.12);   border-color: var(--lose);  color: var(--lose); }
+
+html,body{overflow-x:hidden;}
+@media(max-width:600px){
+  #ac-header{padding:0 0.75rem;}
+  #ac-header .ac-header-right{gap:0.35rem;}
+  .ac-kofi{padding:0 9px;font-size:11px;height:26px;}
+  .ac-adfree{padding:0 9px;font-size:11px;height:26px;}
+  .ac-adfree-active{padding:0 9px;font-size:11px;height:26px;}
+  main{padding:1.25rem 1rem 5rem;}
+  .filter-row{flex-wrap:wrap;gap:0.4rem;}
+  input,select,textarea{font-size:16px!important;}
+}
+@media (max-width: 480px) {
+  .input-row { flex-direction: column; }
+  #guessBtn { width: 100%; }
+  .player-card { padding: 1.5rem 1rem; }
+  .action-row { flex-direction: column; }
+  .action-btn { width: 100%; text-align: center; }
+}
+@media(max-width:420px){
+  #ac-header .ac-logo{font-size:1.2rem;}
+  .ac-kofi{font-size:0;width:32px;padding:0;justify-content:center;letter-spacing:0;}
+  .ac-kofi::before{content:"☕";font-size:15px;}
+  .ac-adfree{font-size:0;width:32px;padding:0;justify-content:center;letter-spacing:0;}
+  .ac-adfree::before{content:"✨";font-size:15px;}
+  .ac-adfree-active{font-size:0;width:32px;padding:0;justify-content:center;letter-spacing:0;}
+  .ac-adfree-active::before{content:"✓";font-size:15px;}
+}
+
+/* ── PARTICLES ── */
+.ac-particle{position:fixed;width:2px;height:2px;border-radius:50%;background:#e8c840;opacity:0;pointer-events:none;z-index:0;animation:ac-float-up 6s ease-in infinite;}
+@keyframes ac-float-up{0%{opacity:0;transform:translateY(0) scale(1);}10%{opacity:0.45;}90%{opacity:0.12;}100%{opacity:0;transform:translateY(-100vh) scale(0.3);}}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;}
+</style>
+</head>
+<body>
+<h1 class="sr-only">JuiceWRLDLE — Guess the Juice WRLD Song</h1>
+
+<div id="ac-header">
+  <a href="/" class="ac-logo"><span class="ani">Ani</span><span class="codle">Codle</span></a>
+  <div class="ac-header-right">
+    <a href="https://ko-fi.com/ExtensionZilla" target="_blank" class="ac-kofi">☕ Ko-fi</a>
+    <button class="ac-adfree" id="acAdFreeBtn" onclick="acShowAdFreeModal()">✨ Remove ads — $4.99</button>
+    <span class="ac-adfree-active" id="acAdFreeActive">✓ Ad-free</span>
+  </div>
+</div>
+
+<main id="main">
+  <div class="loading-wrap">
+    <div class="spinner"></div>
+    Loading song…
+  </div>
+</main>
+
+<div style="max-width:900px;margin:0 auto;padding:0 2rem 2rem;" id="adBottom">
+  <div class="ad-slot ad-slot-leaderboard">Advertisement</div>
+</div>
+
+<button class="feedback-bar-btn" onclick="openFeedback()">✉️ Suggest a song or report a bug</button>
+<section style="max-width:900px;margin:0 auto;padding:0 2rem 3rem;font-family:'DM Sans',sans-serif;">
+  <div style="border-top:1px solid rgba(255,255,255,0.12);padding-top:2rem;">
+    <h2 style="font-family:'Bebas Neue',sans-serif;font-size:1.7rem;letter-spacing:0.08em;color:#b06aff;margin-bottom:1rem;">About JuiceWRLDLE</h2>
+    <p style="font-size:0.88rem;color:#7a7a8c;line-height:1.8;margin-bottom:1rem;max-width:720px;">JuiceWRLDLE is a free daily and unlimited music guessing game dedicated to the full Juice WRLD discography. Each round a short audio clip plays starting at just a few seconds and you have six guesses to identify the track. Every wrong guess unlocks a longer clip and reveals a new clue: era, song length, letter count, first letter, last letter, or producer credits.</p>
+    <p style="font-size:0.88rem;color:#7a7a8c;line-height:1.8;margin-bottom:1rem;max-width:720px;">The game covers thousands of songs including released studio tracks, unreleased leaks, recording session demos, and unsurfaced material all organised by era. Filter by category (released, unreleased, session, unsurfaced) and by era. Adjust difficulty with custom sliders for clip length and plays per tier, or choose from easy, normal, and hard presets.</p>
+    <p style="font-size:0.88rem;color:#7a7a8c;line-height:1.8;margin-bottom:1.5rem;max-width:720px;">Share results with a Wordle-style emoji grid, track your win rate and current streak, and submit song requests or bug reports via the built-in feedback form. No account required — all stats are saved locally in your browser across unlimited rounds.</p>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:0.75rem;">
+      <div style="background:#13131a;border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:1rem;"><div style="font-family:'Bebas Neue',sans-serif;font-size:1rem;letter-spacing:0.06em;color:#b06aff;margin-bottom:0.3rem;">🎵 Audio Clips</div><p style="font-size:0.78rem;color:#7a7a8c;line-height:1.6;margin:0;">Hear a short clip and name the Juice WRLD song before your six guesses run out.</p></div>
+      <div style="background:#13131a;border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:1rem;"><div style="font-family:'Bebas Neue',sans-serif;font-size:1rem;letter-spacing:0.06em;color:#b06aff;margin-bottom:0.3rem;">🔓 Clues</div><p style="font-size:0.78rem;color:#7a7a8c;line-height:1.6;margin:0;">Each wrong guess reveals a new clue: era, length, letters, producer, and more.</p></div>
+      <div style="background:#13131a;border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:1rem;"><div style="font-family:'Bebas Neue',sans-serif;font-size:1rem;letter-spacing:0.06em;color:#b06aff;margin-bottom:0.3rem;">🎛 Filters</div><p style="font-size:0.78rem;color:#7a7a8c;line-height:1.6;margin:0;">Filter by category and era. Adjust difficulty with custom clip length sliders.</p></div>
+      <div style="background:#13131a;border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:1rem;"><div style="font-family:'Bebas Neue',sans-serif;font-size:1rem;letter-spacing:0.06em;color:#b06aff;margin-bottom:0.3rem;">📊 Stats</div><p style="font-size:0.78rem;color:#7a7a8c;line-height:1.6;margin:0;">Track your win rate, guess distribution, and streak across unlimited rounds.</p></div>
+    </div>
+  </div>
+</section>
+<div id="ac-site-footer">
+  <span>© <span id="ac-footer-year">2026</span> AniCodle</span>
+  <span style="color:#252535">·</span>
+  <a href="/about/">About</a>
+  <span style="color:#252535">·</span>
+  <a href="/privacy/">Privacy Policy</a>
+  <span style="color:#252535">·</span>
+  <a href="/contact/">Contact</a>
+  <span style="color:#252535">·</span>
+  <a href="https://ko-fi.com/ExtensionZilla" target="_blank">☕ Ko-fi</a>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ─────────────────────────────────────────────
+// CONSTANTS
+// ─────────────────────────────────────────────
+const API_BASE    = 'https://juicewrld-proxy.epichackermanmilk.workers.dev'; // no trailing slash — endpoints below add their own leading /
+const AUDIO_URL   = (path) => API_BASE + '/files/download/?path=' + encodeURIComponent(path);
+
+// Active filters — mutated by the filter panel
+const filters = {
+  categories: new Set(),  // empty = all; multiple allowed
+  eras:       new Set(),  // empty = all; multiple allowed
+  mode:       'or',       // 'or' = match ANY selected, 'and' = match ALL selected
+};
+
+// Returns true if a /radio/random/ result matches the active filters.
+// The radio endpoint returns result.song.category and result.song.era.name,
+// so we can check client-side instead of making slow paginated /songs/ calls.
+function songMatchesFilters(result) {
+  const hasCategories = filters.categories.size > 0;
+  const hasEras       = filters.eras.size > 0;
+  if (!hasCategories && !hasEras) return true; // no filters — always match
+
+  const catOk = !hasCategories || filters.categories.has(result.song?.category);
+  const eraOk = !hasEras       || filters.eras.has(result.song?.era?.name);
+
+  if (filters.mode === 'or') {
+    // OR mode with only one filter type: just check that type
+    if (hasCategories && !hasEras) return catOk;
+    if (!hasCategories && hasEras) return eraOk;
+    // Both set (cross-product): song must satisfy a selected category AND a selected era
+    return catOk && eraOk;
+  }
+  // AND mode: must match both
+  return catOk && eraOk;
+}
+
+// Always use /radio/random/ — responds instantly (~200ms).
+// Rejection-sample until a result matches active filters.
+// With niche filters this may need a few retries, but each call is fast
+// so even 20 retries beats one slow paginated /songs/ request.
+async function fetchFilteredSong(maxRetries = 30) {
+  let lastErr = null;
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      const r = await fetch(API_BASE + '/radio/random/');
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      const result = await r.json();
+      if (!result || !result.path) continue;      // no audio file — skip
+      if (!songMatchesFilters(result)) continue;  // wrong category/era — try again
+      return result;
+    } catch(e) {
+      lastErr = e;
+      await new Promise(r => setTimeout(r, 300));
+    }
+  }
+  throw lastErr || new Error('Could not find a playable song matching your filters after ' + maxRetries + ' tries');
+}
+// ── DIFFICULTY ─────────────────────────────────────────────────
+// easy:   5s start, 3s step, 3 replays/guess, no hard-mode clue restriction
+// normal: 3s start, 2s step, 2 replays/guess
+// hard:   2s start, 1s step, 1 replay/guess, no clues revealed
+const DIFFICULTY_SETTINGS = {
+  easy:   { clipBase: 5, clipStep: 3, maxReplays: 3, noClues: false },
+  normal: { clipBase: 3, clipStep: 2, maxReplays: 2, noClues: false },
+  hard:   { clipBase: 2, clipStep: 1, maxReplays: 1, noClues: true  },
+};
+const DIFF_KEY   = 'jwrlddle_difficulty';
+const CUSTOM_KEY = 'jwrlddle_custom';
+let difficulty   = localStorage.getItem(DIFF_KEY) || 'normal';
+
+// Custom overrides — when set, these take priority over the preset
+let customSettings = (function() {
+  try { return JSON.parse(localStorage.getItem(CUSTOM_KEY)) || {}; }
+  catch { return {}; }
+})();
+
+function getDiff() { return DIFFICULTY_SETTINGS[difficulty] || DIFFICULTY_SETTINGS.normal; }
+function setDifficulty(d) {
+  difficulty = d;
+  customSettings = {};
+  localStorage.setItem(DIFF_KEY, d);
+  localStorage.removeItem(CUSTOM_KEY);
+  renderFilterPanel();
+}
+
+function setCustom(key, val, slider) {
+  customSettings[key] = val;
+  saveCustom();
+  // Update the value label next to the slider without full re-render
+  const suffix = key === 'maxReplays' ? '' : 's';
+  const labelId = { clipBase: 'csBase', clipStep: 'csStep', maxReplays: 'csReplays' }[key];
+  const label = document.getElementById(labelId);
+  if (label) label.textContent = val + suffix;
+  // Update slider fill
+  if (slider) {
+    const min = +slider.min, max = +slider.max;
+    const pct = Math.round(((val - min) / (max - min)) * 100);
+    slider.style.setProperty('--pct', pct + '%');
+  }
+  // Deactivate preset chips since user has customised
+  document.querySelectorAll('.diff-chip').forEach(b => b.classList.remove('active'));
+}
+function saveCustom() { localStorage.setItem(CUSTOM_KEY, JSON.stringify(customSettings)); }
+
+function getClipBase()   { return customSettings.clipBase   ?? getDiff().clipBase; }
+function getClipStep()   { return customSettings.clipStep   ?? getDiff().clipStep; }
+function getMaxReplays() { return customSettings.maxReplays ?? getDiff().maxReplays; }
+function getClipSec() {
+  const wrong = state ? state.guesses.filter(g => !g.correct).length : 0;
+  return getClipBase() + wrong * getClipStep();
+}
+const MAX_GUESSES  = 6;
+function getMaxClipSec() { return getClipBase() + MAX_GUESSES * getClipStep(); }
+
+
+
+// Parse "M:SS" → total seconds. Returns null if unparseable.
+function parseDuration(str) {
+  if (!str) return null;
+  const parts = String(str).trim().split(':');
+  if (parts.length === 2) {
+    const m = parseInt(parts[0], 10), s = parseInt(parts[1], 10);
+    if (!isNaN(m) && !isNaN(s)) return m * 60 + s;
+  }
+  if (parts.length === 3) {
+    const h = parseInt(parts[0], 10), m = parseInt(parts[1], 10), s = parseInt(parts[2], 10);
+    if (!isNaN(h) && !isNaN(m) && !isNaN(s)) return h * 3600 + m * 60 + s;
+  }
+  return null;
+}
+
+// Pick a random start second that guarantees MAX_CLIP_SEC seconds remain.
+// Falls back to 0 if duration is unknown or too short.
+function pickRandomStart(songData) {
+  const duration = parseDuration(songData.song?.length);
+  if (!duration || duration <= getMaxClipSec() + 5) return 0;
+  // Safe playable window: 0 to (duration - MAX_CLIP_SEC - 2s safety buffer)
+  const maxStart = Math.floor(duration - getMaxClipSec() - 2);
+  return Math.floor(Math.random() * maxStart);
+}
+const STREAK_KEY  = 'jwrlddle_streak';
+const VOL_KEY     = 'jwrlddle_volume';
+let currentVol    = parseFloat(localStorage.getItem(VOL_KEY) || '0.8');
+let prevVol       = currentVol;
+
+// ─────────────────────────────────────────────
+// FILTER PANEL
+// ─────────────────────────────────────────────
+const FILTER_KEY = 'jwrlddle_filters';
+let eraList = []; // populated from songs.json after acCache loads
+
+function saveFilters() {
+  localStorage.setItem(FILTER_KEY, JSON.stringify({
+    categories: [...filters.categories],
+    eras:       [...filters.eras],
+    mode:       filters.mode,
+  }));
+}
+
+function loadFilters() {
+  try {
+    const f = JSON.parse(localStorage.getItem(FILTER_KEY) || '{}');
+    if (Array.isArray(f.categories)) filters.categories = new Set(f.categories);
+    if (Array.isArray(f.eras))       filters.eras       = new Set(f.eras);
+    if (f.mode) filters.mode = f.mode;
+    // migrate old single-value format
+    if (f.category) filters.categories.add(f.category);
+    if (f.era)      filters.eras.add(f.era);
+  } catch {}
+}
+
+function buildEraList() {
+  if (!acCache || !acCache.length) return;
+  const seen = new Set();
+  for (const s of acCache) {
+    if (s.era && !seen.has(s.era)) { seen.add(s.era); eraList.push(s.era); }
+  }
+  eraList.sort((a, b) => a.localeCompare(b));
+}
+
+function filterBadgeHtml() {
+  const active = filters.categories.size + filters.eras.size;
+  return active ? `<span class="filter-active-badge">${active} active</span>` : '';
+}
+
+function renderFilterPanel() {
+  const panel = document.getElementById('filterPanel');
+  if (!panel) return;
+  const isOpen = panel.classList.contains('open');
+
+  const CATS = [
+    { val: 'released',          label: 'Released' },
+    { val: 'unreleased',        label: 'Unreleased' },
+    { val: 'unsurfaced',        label: 'Unsurfaced' },
+    { val: 'recording_session', label: 'Session' },
+  ];
+
+  const catChips = CATS.map(c =>
+    `<button class="filter-chip ${filters.categories.has(c.val) ? 'active' : ''}"
+      onclick="toggleCategory('${c.val}')">${c.label}</button>`
+  ).join('');
+
+  // Era chips
+  const eraChips = eraList.map(e =>
+    `<button class="filter-chip ${filters.eras.has(e) ? 'active' : ''}"
+      onclick="toggleEra('${escHtml(e)}')">${escHtml(e)}</button>`
+  ).join('');
+
+  const eraSection = eraList.length ? `
+    <div>
+      <div class="filter-group-label">Era</div>
+      <div class="era-list">${eraChips || '<span style="font-size:12px;color:var(--hint)">No eras loaded yet</span>'}</div>
+    </div>` : '';
+
+  const hasFilters = filters.categories.size > 0 || filters.eras.size > 0;
+
+  panel.innerHTML = `
+    <div class="filter-header" onclick="toggleFilterPanel()">
+      <span class="filter-title">🎛 Filters &amp; Settings ${filterBadgeHtml()}</span>
+      <span class="filter-chevron">▶</span>
+    </div>
+    <div class="filter-body">
+      <div>
+        <div class="filter-group-label">Difficulty</div>
+        <div class="diff-chips">
+          <button class="diff-chip easy ${difficulty==='easy'&&!Object.keys(customSettings).length?'active':''}" onclick="setDifficulty('easy')">🟢 Easy · 5s · 3 plays</button>
+          <button class="diff-chip normal ${difficulty==='normal'&&!Object.keys(customSettings).length?'active':''}" onclick="setDifficulty('normal')">🟣 Normal · 3s · 2 plays</button>
+          <button class="diff-chip hard ${difficulty==='hard'&&!Object.keys(customSettings).length?'active':''}" onclick="setDifficulty('hard')">🔴 Hard · 2s · no clues</button>
+        </div>
+        <div class="custom-settings">
+          <div style="font-size:10px;color:var(--hint);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.1rem">
+            Custom — overrides preset above
+          </div>
+          <div class="custom-row">
+            <span class="custom-lbl">Start clip</span>
+            <input class="custom-slider" type="range" min="1" max="15" step="1"
+              value="${getClipBase()}"
+              style="--pct:${Math.round(((getClipBase()-1)/14)*100)}%"
+              oninput="setCustom('clipBase',+this.value,this)" />
+            <span class="custom-val" id="csBase">${getClipBase()}s</span>
+          </div>
+          <div class="custom-row">
+            <span class="custom-lbl">+s per miss</span>
+            <input class="custom-slider" type="range" min="0" max="10" step="1"
+              value="${getClipStep()}"
+              style="--pct:${Math.round((getClipStep()/10)*100)}%"
+              oninput="setCustom('clipStep',+this.value,this)" />
+            <span class="custom-val" id="csStep">${getClipStep()}s</span>
+          </div>
+          <div class="custom-row">
+            <span class="custom-lbl">Plays/tier</span>
+            <input class="custom-slider" type="range" min="1" max="10" step="1"
+              value="${getMaxReplays()}"
+              style="--pct:${Math.round(((getMaxReplays()-1)/9)*100)}%"
+              oninput="setCustom('maxReplays',+this.value,this)" />
+            <span class="custom-val" id="csReplays">${getMaxReplays()}</span>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="filter-group-label" style="display:flex;align-items:center;justify-content:space-between;">
+          <span>Category / Era <span style="font-size:10px;color:var(--hint);font-weight:400;margin-left:4px">tap to toggle</span></span>
+          <div style="display:flex;align-items:center;gap:5px;font-size:10.5px;">
+            <span style="color:var(--hint)">Match:</span>
+            <button onclick="setFilterMode('or')"
+              style="padding:2px 8px;border-radius:3px;font-size:10.5px;font-family:var(--font-body);cursor:pointer;border:1px solid ${filters.mode==='or'?'var(--juice)':'var(--border-hi)'};background:${filters.mode==='or'?'var(--juice-dim)':'var(--surface3)'};color:${filters.mode==='or'?'var(--juice)':'var(--muted)'};">ANY</button>
+            <button onclick="setFilterMode('and')"
+              style="padding:2px 8px;border-radius:3px;font-size:10.5px;font-family:var(--font-body);cursor:pointer;border:1px solid ${filters.mode==='and'?'var(--juice)':'var(--border-hi)'};background:${filters.mode==='and'?'var(--juice-dim)':'var(--surface3)'};color:${filters.mode==='and'?'var(--juice)':'var(--muted)'};">ALL</button>
+          </div>
+        </div>
+        <div class="filter-chips">
+          <button class="filter-chip ${filters.categories.size===0?'active':''}"
+            onclick="clearCategoryFilter()">All</button>
+          ${catChips}
+        </div>
+      </div>
+      ${eraSection}
+      ${hasFilters ? `
+        <div>
+          <button class="filter-chip" style="color:var(--lose);border-color:rgba(224,92,58,0.3);"
+            onclick="clearFilters()">✕ Clear all filters</button>
+        </div>` : ''}
+    </div>
+  `;
+}
+
+function toggleFilterPanel() {
+  const panel = document.getElementById('filterPanel');
+  if (!panel) return;
+  panel.classList.toggle('open');
+  renderFilterPanel();
+}
+
+function toggleCategory(val) {
+  if (filters.categories.has(val)) filters.categories.delete(val);
+  else filters.categories.add(val);
+  saveFilters(); renderFilterPanel();
+}
+
+function clearCategoryFilter() {
+  filters.categories.clear();
+  saveFilters(); renderFilterPanel();
+}
+
+function toggleEra(val) {
+  if (filters.eras.has(val)) filters.eras.delete(val);
+  else filters.eras.add(val);
+  saveFilters(); renderFilterPanel();
+}
+
+function clearFilters() {
+  filters.categories.clear(); filters.eras.clear();
+  saveFilters(); renderFilterPanel();
+}
+
+function setFilterMode(mode) {
+  filters.mode = mode;
+  saveFilters(); renderFilterPanel();
+}
+const BEST_KEY    = 'jwrlddle_best';
+const STATS_KEY   = 'jwrlddle_stats';   // { wins, rounds }
+
+// Clues revealed after each wrong guess (index = guess number just made, 1-based)
+// guess 1 wrong → clue 0, guess 2 wrong → clue 1, etc.
+const CLUE_DEFS = [
+  { key: 'era',      icon: '🌀', label: 'Era' },
+  { key: 'length',   icon: '⏱', label: 'Length' },
+  { key: 'letters',  icon: '🔢', label: 'Letters in title' },
+  { key: 'first',    icon: '🔤', label: 'First letter' },
+  { key: 'last',     icon: '🔡', label: 'Last letter' },
+  { key: 'producer', icon: '🎛', label: 'Producer' },
+];
+
+// ─────────────────────────────────────────────
+// STATE
+// ─────────────────────────────────────────────
+let song      = null;   // full API response
+let state     = null;   // { guesses[], done, won, cluesRevealed, startSec, replayCount, mode, iKnowThis }
+let audio     = null;   // HTMLAudioElement
+let clipTimer = null;
+let isPlaying = false;
+let roundNum  = 0;
+let waveInt   = null;
+let timerInt  = null;
+
+// ─────────────────────────────────────────────
+// STREAK
+// ─────────────────────────────────────────────
+function getStreak()    { return parseInt(localStorage.getItem(STREAK_KEY) || '0'); }
+function getBest()      { return parseInt(localStorage.getItem(BEST_KEY)   || '0'); }
+function setStreak(n)   {
+  localStorage.setItem(STREAK_KEY, String(n));
+  if (n > getBest()) localStorage.setItem(BEST_KEY, String(n));
+}
+function getStats() {
+  try {
+    return JSON.parse(localStorage.getItem(STATS_KEY)) || {
+      wins: 0, rounds: 0,
+      dist: [0,0,0,0,0,0],  // wins by guess count 1-6
+      cats: {}               // wins by category key
+    };
+  } catch {
+    return { wins: 0, rounds: 0, dist: [0,0,0,0,0,0], cats: {} };
+  }
+}
+function recordResult(won, guessCount, categoryKey) {
+  const s = getStats();
+  if (!s.dist) s.dist = [0,0,0,0,0,0];
+  if (!s.cats) s.cats = {};
+  s.rounds++;
+  if (won) {
+    s.wins++;
+    const idx = Math.min(guessCount - 1, 5);
+    s.dist[idx] = (s.dist[idx] || 0) + 1;
+    if (categoryKey) s.cats[categoryKey] = (s.cats[categoryKey] || 0) + 1;
+  }
+  localStorage.setItem(STATS_KEY, JSON.stringify(s));
+}
+function winRate() {
+  const s = getStats();
+  return s.rounds ? Math.round((s.wins / s.rounds) * 100) : 0;
+}
+
+// ─────────────────────────────────────────────
+// CLUE VALUES — extract from song data
+// ─────────────────────────────────────────────
+function getClueValue(key, songData) {
+  const songName = (songData.song?.name || songData.title || '').trim();
+  switch(key) {
+    case 'era':
+      return songData.song?.era?.name || '—';
+    case 'length':
+      return songData.song?.length || '—';
+    case 'letters':
+      return String(songName.replace(/\s/g, '').length) + ' letters';
+    case 'first':
+      return songName[0]?.toUpperCase() || '—';
+    case 'last':
+      return songName[songName.length - 1]?.toUpperCase() || '—';
+    case 'producer':
+      return songData.song?.producers || '—';
+    default: return '—';
+  }
+}
+
+// ─────────────────────────────────────────────
+// GUESS MATCHING
+// ─────────────────────────────────────────────
+function normalize(s) {
+  return s.toLowerCase()
+    .replace(/[^a-z0-9\s]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+// Strip version/take/remix suffixes for fuzzy matching.
+// Mirrors the logic in fetch-jwrld-songs.js so they stay in sync.
+function stripVersion(name) {
+  return name
+    .replace(/\s*[vV]\d+(\.\d+)*$/g, '')
+    .replace(/\s*\(\s*[Tt]ake\s*\d+[^)]*\)/g, '')
+    .replace(/\s*[\(\[][^\)\]]{1,60}[\)\]]/g, '')
+    .replace(/[\s\-_]+$/, '')
+    .trim();
+}
+
+function checkGuess(input, songData) {
+  // Build every valid answer string from the playing song's data
+  const raw = [
+    songData.song?.name,
+    songData.title,
+    ...(songData.song?.track_titles || [])
+  ].filter(Boolean);
+
+  const candidates = new Set();
+  for (const r of raw) {
+    candidates.add(normalize(r));
+    // Also add version-stripped form so "Life's A Mess" matches "Life's A Mess v10"
+    candidates.add(normalize(stripVersion(r)));
+  }
+
+  // Apply the same transformations to the player's guess
+  const guessRaw      = normalize(input);
+  const guessStripped = normalize(stripVersion(input));
+
+  return [...candidates].some(c => c === guessRaw || c === guessStripped);
+}
+
+// ─────────────────────────────────────────────
+// AUDIO PLAYBACK
+// ─────────────────────────────────────────────
+function stopAudio() {
+  if (clipTimer) { clearTimeout(clipTimer); clipTimer = null; }
+  if (waveInt)   { clearInterval(waveInt); waveInt = null; }
+  if (timerInt)  { clearInterval(timerInt); timerInt = null; }
+  if (audio) { audio.pause(); }
+  isPlaying = false;
+}
+
+function playClip() {
+  if (!song || state.done) return;
+  if (isPlaying) { stopAudio(); updatePlayBtn(false); return; }
+
+  // Enforce replay limit (hard mode = 1, normal = 2, easy = 3 per guess tier)
+  const maxR = getMaxReplays();
+  if (state.replayCount >= maxR) {
+    toast(`Max ${maxR} play${maxR>1?'s':''} per guess tier — make your guess!`);
+    return;
+  }
+  state.replayCount++;
+
+  const btn  = document.getElementById('playBtn');
+  const hint = document.getElementById('playHint');
+  if (btn)  { btn.disabled = true; btn.textContent = '⏸'; }
+  if (hint) hint.textContent = 'Loading…';
+
+  // Reuse the pre-buffered audio element if it already holds this song's data;
+  // otherwise create a fresh one. Reusing means the browser has been downloading
+  // in the background since render() ran, so canplay fires much sooner.
+  const targetSrc = AUDIO_URL(song.path);
+  if (!audio || audio.src !== targetSrc) {
+    if (audio) { audio.pause(); audio = null; }
+    audio = new Audio();
+    audio.crossOrigin = 'anonymous';
+    audio.preload = 'auto';
+    audio.src = targetSrc;
+  } else {
+    // Already pre-loaded — reset position for a clean play
+    audio.pause();
+    audio.currentTime = 0;
+  }
+  audio.volume = currentVol;
+
+  const startSec = state.startSec || 0;
+
+  function doPlay() {
+    if (startSec > 0 && audio.seekable && audio.seekable.length > 0) {
+      audio.currentTime = startSec;
+    }
+    audio.play().then(() => {
+      isPlaying = true;
+      if (btn)  { btn.disabled = false; btn.textContent = '⏸'; }
+      if (hint) hint.textContent = 'Tap ⏸ to pause';
+      startWaveform();
+      startTimerRing(getClipSec());
+      clipTimer = setTimeout(() => {
+        stopAudio();
+        updatePlayBtn(false);
+        if (!state.done) {
+          const h = document.getElementById('playHint');
+          if (h) h.textContent = 'Press ▶ to replay the clip';
+        }
+      }, getClipSec() * 1000);
+    }).catch(() => {
+      if (hint) hint.textContent = 'Playback failed — try again';
+      if (btn)  { btn.disabled = false; btn.textContent = '▶'; }
+    });
+  }
+
+  // If already buffered enough, play right away; otherwise wait for canplay
+  if (audio.readyState >= 3) {
+    doPlay();
+  } else {
+    audio.addEventListener('canplay', doPlay, { once: true });
+    audio.addEventListener('error', () => {
+      if (hint) hint.textContent = 'Could not load audio — try next round';
+      if (btn)  { btn.disabled = false; btn.textContent = '▶'; }
+    }, { once: true });
+  }
+}
+
+function updatePlayBtn(playing) {
+  const btn = document.getElementById('playBtn');
+  if (btn) btn.textContent = playing ? '⏸' : '▶';
+}
+
+// ─────────────────────────────────────────────
+// WAVEFORM
+// ─────────────────────────────────────────────
+function buildWaveform() {
+  const wrap = document.getElementById('waveformWrap');
+  if (!wrap) return;
+  wrap.innerHTML = '';
+  for (let i = 0; i < 38; i++) {
+    const b = document.createElement('div');
+    b.className = 'wave-bar';
+    b.style.height = (6 + Math.random() * 36) + 'px';
+    wrap.appendChild(b);
+  }
+}
+
+function startWaveform() {
+  const wrap = document.getElementById('waveformWrap');
+  if (!wrap) return;
+  const bars = wrap.querySelectorAll('.wave-bar');
+  let frame = 0;
+  waveInt = setInterval(() => {
+    frame++;
+    const pct = frame / (getClipSec() * 10);
+    bars.forEach((b, i) => {
+      const bp = i / bars.length;
+      if (bp < pct) {
+        b.classList.add('played'); b.classList.remove('active');
+      } else if (bp < pct + 0.07) {
+        b.classList.add('active'); b.classList.remove('played');
+        b.style.height = (5 + Math.random() * 42) + 'px';
+      }
+    });
+    if (pct >= 1) { clearInterval(waveInt); waveInt = null; }
+  }, 100);
+}
+
+// ─────────────────────────────────────────────
+// TIMER RING
+// ─────────────────────────────────────────────
+function startTimerRing(sec) {
+  const ring = document.getElementById('timerRing');
+  const txt  = document.getElementById('timerText');
+  if (!ring || !txt) return;
+  const c = 2 * Math.PI * 30;
+  ring.style.strokeDasharray  = c;
+  ring.style.strokeDashoffset = 0;
+  txt.textContent = sec;
+  let elapsed = 0;
+  timerInt = setInterval(() => {
+    elapsed += 100;
+    ring.style.strokeDashoffset = c * (elapsed / (sec * 1000));
+    txt.textContent = Math.max(0, Math.ceil(sec - elapsed / 1000));
+    if (elapsed >= sec * 1000) { clearInterval(timerInt); timerInt = null; }
+  }, 100);
+}
+
+// ─────────────────────────────────────────────
+// RENDER
+// ─────────────────────────────────────────────
+function render() {
+  const main = document.getElementById('main');
+  const circ = 2 * Math.PI * 30;
+
+  // pips
+  const pips = Array.from({ length: MAX_GUESSES }, (_, i) => {
+    const g = state.guesses[i];
+    if (!g) return '<div class="pip"></div>';
+    return `<div class="pip ${g.correct ? 'right' : 'wrong'}"></div>`;
+  }).join('');
+
+  // clip pill (just shows the 3s)
+  // Build clip pills showing progression: 3s, 5s, 7s, 9s, 11s
+  const wrongCount = state.guesses.filter(g => !g.correct).length;
+  const clipPill = `<div class="clip-pill-row">${
+    Array.from({ length: MAX_GUESSES }, (_, i) => {
+      const sec = getClipBase() + i * getClipStep();
+      let cls = 'clip-pill';
+      if (i < wrongCount) cls += ' done';
+      else if (i === wrongCount) cls += ' now';
+      return `<span class="${cls}">${sec}s</span>`;
+    }).join('')
+  }</div>`;
+
+  // clues
+  const cluesHtml = state.cluesRevealed.map(key => {
+    const def = CLUE_DEFS.find(d => d.key === key);
+    const val = getClueValue(key, song);
+    return `<div class="clue-card">
+      <div class="clue-icon">${def.icon}</div>
+      <div>
+        <div class="clue-label">${def.label}</div>
+        <div class="clue-value">${val}</div>
+      </div>
+    </div>`;
+  }).join('');
+
+  // guess history
+  const historyHtml = state.guesses.length
+    ? `<div class="history-wrap">${state.guesses.map((g, i) =>
+        `<div class="history-item">
+          <div class="history-num">${i + 1}</div>
+          <div class="history-title">${escHtml(g.title)}</div>
+          <span>${g.correct ? '✅' : '❌'}</span>
+        </div>`
+      ).join('')}</div>`
+    : '';
+
+  // result banner
+  let resultHtml = '';
+  if (state.done) {
+    const songName  = song.song?.name || song.title;
+    const eraName   = song.song?.era?.name || '';
+    const catRaw    = song.song?.category || '';
+    const cat       = catRaw.charAt(0).toUpperCase() + catRaw.slice(1).replace(/_/g, ' ');
+    const length    = song.song?.length || '';
+    const imgSrc    = song.song?.image_url
+      ? `https://juicewrldapi.com${song.song.image_url}`
+      : null;
+
+    // "What was that?" metadata block shown on both win and loss
+    const producers  = song.song?.producers || '';
+    const recDate    = song.song?.record_dates || '';
+    const relDate    = song.song?.release_date || '';
+    const altTitles  = (song.song?.track_titles||[]).filter(t=>t&&t!==songName).slice(0,3).join(', ');
+    const addlInfo   = song.song?.additional_information || '';
+    const wwtRows    = [
+      imgSrc ? null : null,
+      eraName  ? `<div class="wwt-row"><span class="wwt-lbl">Era</span><span class="wwt-val">${escHtml(eraName)}</span></div>` : '',
+      cat      ? `<div class="wwt-row"><span class="wwt-lbl">Category</span><span class="wwt-val">${escHtml(cat)}</span></div>` : '',
+      length   ? `<div class="wwt-row"><span class="wwt-lbl">Length</span><span class="wwt-val">${escHtml(length)}</span></div>` : '',
+      producers? `<div class="wwt-row"><span class="wwt-lbl">Producer(s)</span><span class="wwt-val">${escHtml(producers)}</span></div>` : '',
+      altTitles? `<div class="wwt-row"><span class="wwt-lbl">Also known as</span><span class="wwt-val">${escHtml(altTitles)}</span></div>` : '',
+      recDate  ? `<div class="wwt-row"><span class="wwt-lbl">Recorded</span><span class="wwt-val">${escHtml(recDate.replace(/\n/g,' · '))}</span></div>` : '',
+      relDate  ? `<div class="wwt-row"><span class="wwt-lbl">Released</span><span class="wwt-val">${escHtml(relDate.replace(/\n/g,' ').replace(/\r/g,'').trim())}</span></div>` : '',
+      addlInfo ? `<div class="wwt-row wwt-info"><span class="wwt-val">${escHtml(addlInfo)}</span></div>` : '',
+    ].filter(Boolean).join('');
+
+    const wwtBlock = `<details class="wwt-details">
+      <summary class="wwt-summary">🔍 What was that?</summary>
+      <div class="wwt-body">
+        ${imgSrc ? `<div style="text-align:center;margin-bottom:0.75rem"><img class="result-era-img" src="${imgSrc}" alt="${escHtml(eraName)}" onerror="this.style.display='none'" /></div>` : ''}
+        ${wwtRows}
+      </div>
+    </details>`;
+
+    const nextLabel = 'Next song →';
+
+    if (state.won) {
+      const curStreak = getStreak();
+      const curBest   = getBest();
+      const isNewBest = curStreak > 1 && curStreak === curBest;
+      const streakBadge = curStreak >= 2
+        ? `<div class="streak-badge">${isNewBest ? '🏆 New best — ' : ''}🔥 ${curStreak} in a row!</div>`
+        : '';
+      const iKnowBadge = state.guesses[0]?.iKnowThis
+        ? `<div class="streak-badge" style="background:rgba(232,200,64,0.15);border-color:rgba(232,200,64,0.4);color:var(--accent)">⚡ Cold guess!</div>`
+        : '';
+      resultHtml = `<div class="result-banner win">
+        <h2>🎵 CORRECT!</h2>
+        <p>That was <b>${escHtml(songName)}</b>.<br>You got it in ${state.guesses.length} guess${state.guesses.length === 1 ? '' : 'es'}.</p>
+        ${streakBadge}${iKnowBadge}
+        ${wwtBlock}
+        <div class="result-actions">
+          <button class="btn-share" id="shareBtn">📤 Share</button>
+          <button class="btn-next" id="nextBtn">${nextLabel}</button>
+        </div>
+      </div>`;
+    } else if (state.skipped) {
+      resultHtml = `<div class="result-banner lose" style="border-color:rgba(176,106,255,0.3);background:rgba(176,106,255,0.06)">
+        <h2 style="color:var(--juice)">↪ SKIPPED</h2>
+        <p style="color:var(--text)">The song was <b>${escHtml(songName)}</b>.</p>
+        ${wwtBlock}
+        <div class="result-actions">
+          <button class="btn-share" id="shareBtn">📤 Share</button>
+          <button class="btn-next" id="nextBtn">${nextLabel}</button>
+        </div>
+      </div>`;
+    } else {
+      resultHtml = `<div class="result-banner lose">
+        <h2>💀 GAME OVER</h2>
+        <p>The song was <b>${escHtml(songName)}</b>.</p>
+        ${wwtBlock}
+        <div class="result-actions">
+          <button class="btn-share" id="shareBtn">📤 Share</button>
+          <button class="btn-next" id="nextBtn">${nextLabel}</button>
+        </div>
+      </div>`;
+    }
+  }
+
+  // input section
+  const remaining = MAX_GUESSES - state.guesses.length;
+  const inputHtml = state.done ? '' : `
+    <div class="guess-section">
+      <div class="section-label">Your guess — ${remaining} remaining</div>
+      <div class="input-row">
+        <div class="ac-wrap">
+          <input id="songInput" type="text" placeholder="Type a Juice WRLD song title…" autocomplete="off" autocorrect="off" spellcheck="false" />
+          <div id="acDropdown" class="ac-dropdown" style="display:none"></div>
+        </div>
+        <button id="guessBtn" disabled>Guess</button>
+      </div>
+      <div class="action-row">
+        <button class="action-btn" id="iKnowThisBtn" title="Name the song before hearing the clip!">⚡ I Know This</button>
+        <button class="action-btn skip" id="skipBtn">↪ Skip</button>
+      </div>
+    </div>`;
+
+  // stats card
+  const st = getStats();
+  const dist = st.dist || [0,0,0,0,0,0];
+  const distMax = Math.max(1, ...dist);
+  const distBars = dist.map((v,i) => {
+    const pct = Math.round((v/distMax)*100);
+    const isMax = v === distMax && v > 0;
+    return `<div class="dist-row">
+      <div class="dist-label">${i+1}</div>
+      <div class="dist-bar-wrap">
+        <div class="dist-bar ${isMax?'best':''}" style="width:${pct}%"></div>
+      </div>
+      <div class="dist-count">${v}</div>
+    </div>`;
+  }).join('');
+
+  const catEntries = Object.entries(st.cats||{}).sort((a,b)=>b[1]-a[1]);
+  const catTotal   = catEntries.reduce((s,[,v])=>s+v,0);
+  const catRows    = catEntries.length
+    ? catEntries.map(([k,v])=>{
+        const label = k.charAt(0).toUpperCase()+k.slice(1).replace(/_/g,' ');
+        const pct   = catTotal ? Math.round((v/catTotal)*100) : 0;
+        return `<div class="dist-row">
+          <div class="dist-label" style="width:80px;font-size:10px">${label}</div>
+          <div class="dist-bar-wrap"><div class="dist-bar" style="width:${pct}%;background:var(--juice-dim);border-color:var(--juice)"></div></div>
+          <div class="dist-count">${v}</div>
+        </div>`;
+      }).join('')
+    : '<div style="font-size:12px;color:var(--hint);padding:0.5rem 0">No data yet</div>';
+
+  const streakHtml = `
+  <div class="stats-card">
+    <div class="stat-box">
+      <div class="stat-num">${getStreak()}</div>
+      <div class="stat-lbl">🔥 Streak</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-num">${getBest()}</div>
+      <div class="stat-lbl">🏆 Best</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-num">${winRate()}%</div>
+      <div class="stat-lbl">✅ Win rate</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-num">${st.rounds}</div>
+      <div class="stat-lbl">🎵 Played</div>
+    </div>
+  </div>
+  <div class="stats-detail">
+    <div class="stats-detail-tabs">
+      <button class="sdt active" onclick="switchStatTab(this,'distTab')">Guess dist.</button>
+      <button class="sdt" onclick="switchStatTab(this,'catTab')">By category</button>
+    </div>
+    <div id="distTab" class="stat-tab active">${distBars}</div>
+    <div id="catTab"  class="stat-tab">${catRows}</div>
+  </div>
+  <button class="share-stats-btn" onclick="shareStats()">📤 Share my stats</button>
+  <div class="section-label" style="margin-bottom:0.75rem;margin-top:1rem">Guess history</div>`;
+
+  // replay counter
+  const replaysLeft = Math.max(0, getMaxReplays() - state.replayCount);
+  const replayHint  = state.done ? '' : `${replaysLeft} play${replaysLeft!==1?'s':''} left this tier`;
+
+  // round label
+  const roundLabel = `Round ${roundNum} · ${difficulty.charAt(0).toUpperCase()+difficulty.slice(1)}`;
+
+  main.innerHTML = `
+    <div class="game-title-wrap">
+      <div class="game-title">JUICE<span>WRLD</span>LE</div>
+      <div class="game-sub">${roundLabel}</div>
+    </div>
+
+    <div class="ad-slot ad-slot-leaderboard" id="adTop">Advertisement</div>
+
+    <div class="filter-panel" id="filterPanel"></div>
+
+    ${resultHtml}
+
+    <div class="vol-wrap">
+      <span class="vol-icon" id="volIcon" onclick="toggleMute()">🔊</span>
+      <input class="vol-slider" id="volSlider" type="range" min="0" max="100"
+        value="${Math.round(currentVol * 100)}"
+        style="--vol-pct:${Math.round(currentVol * 100)}%"
+        oninput="setVolume(this.value)" />
+      <span class="vol-pct" id="volPct">${Math.round(currentVol * 100)}%</span>
+    </div>
+
+    <div class="player-card">
+      <div class="round-badge">🎵 ${roundLabel}</div>
+      <div class="waveform-wrap" id="waveformWrap"></div>
+      <div class="timer-wrap">
+        <svg class="timer-svg" width="72" height="72" viewBox="0 0 72 72">
+          <circle class="timer-bg" cx="36" cy="36" r="30"/>
+          <circle class="timer-ring" id="timerRing" cx="36" cy="36" r="30"
+            stroke-dasharray="${circ}" stroke-dashoffset="${circ}"/>
+        </svg>
+        <div class="timer-text" id="timerText">${getClipSec()}</div>
+      </div>
+      <button class="play-btn" id="playBtn" ${state.done || replaysLeft===0 ? 'disabled' : ''}>▶</button>
+      <div class="play-hint" id="playHint">${state.done ? 'Round over' : `${replayHint} · ${getClipSec()}s clip`}</div>
+      ${clipPill}
+    </div>
+
+    <div class="pip-row">${pips}</div>
+
+    ${cluesHtml ? `<div class="clues-wrap">${cluesHtml}</div>` : ''}
+
+    ${inputHtml}
+
+    ${streakHtml}
+    ${historyHtml}
+  `;
+
+  buildWaveform();
+  // Render filter panel and build era list once cache is ready
+  renderFilterPanel();
+  if (eraList.length === 0 && acCache && acCache.length) buildEraList();
+
+  // Wire events
+  document.getElementById('playBtn')?.addEventListener('click', playClip);
+
+  if (!state.done) {
+    const inp  = document.getElementById('songInput');
+    const btn  = document.getElementById('guessBtn');
+    const skip = document.getElementById('skipBtn');
+    const ikt  = document.getElementById('iKnowThisBtn');
+
+    if (inp) wireAcInput(inp);
+    btn?.addEventListener('click', doGuess);
+    skip?.addEventListener('click', skipRound);
+    ikt?.addEventListener('click', iKnowThis);
+    // Pre-load songs.json in background so first keystroke is instant
+    ensureAcCache();
+  } else {
+    document.getElementById('nextBtn')?.addEventListener('click', loadRound);
+    document.getElementById('shareBtn')?.addEventListener('click', shareResult);
+  }
+
+  if (isAdFree()) document.querySelectorAll('.ad-slot').forEach(el => el.style.display = 'none');
+}
+
+// ─────────────────────────────────────────────
+// AUTOCOMPLETE
+// Loads /juicewrldle/songs.json (static file in your repo,
+// generated by running: node fetch-jwrld-songs.js)
+// ─────────────────────────────────────────────
+let acCache    = null;  // array of { name, category, era, titles } once loaded
+let acLoading  = false;
+let acTimer    = null;
+let acHiIndex  = -1;
+let acSelected = null;  // name the user picked from the dropdown
+
+async function ensureAcCache() {
+  if (acCache !== null) return;   // already loaded (even if empty)
+  if (acLoading) return;
+  acLoading = true;
+  try {
+    const r = await fetch('./songs.json');
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const data = await r.json();
+    acCache = Array.isArray(data) ? data : [];
+    console.log('[JuiceWRLDLE] Loaded', acCache.length, 'songs for autocomplete');
+    buildEraList();
+    renderFilterPanel(); // refresh now that eras are known
+  } catch(e) {
+    console.warn('[JuiceWRLDLE] Could not load songs.json:', e.message);
+    acCache = [];
+  }
+  acLoading = false;
+}
+
+function acFilter(query) {
+  if (!acCache || !acCache.length) return [];
+  const q = query.toLowerCase().trim();
+  if (q.length < 1) return [];
+
+  const seenNames = new Set();
+  const results   = [];
+
+  for (const s of acCache) {
+    const nameKey = s.name.toLowerCase();
+    // Match against name or any alt title
+    const matches =
+      nameKey.includes(q) ||
+      (s.titles || []).some(t => t.toLowerCase().includes(q));
+
+    if (matches && !seenNames.has(nameKey)) {
+      seenNames.add(nameKey);
+      results.push(s);
+      if (results.length >= 12) break;
+    }
+  }
+  return results;
+}
+
+function acRender(results) {
+  const dd = document.getElementById('acDropdown');
+  if (!dd) return;
+  acHiIndex = -1;
+  if (!results.length) {
+    dd.innerHTML = '<div class="ac-msg">No matches</div>';
+    dd.style.display = 'block';
+    return;
+  }
+  dd.innerHTML = results.map((s, i) => {
+    const cat = s.category
+      ? s.category.charAt(0).toUpperCase() + s.category.slice(1).replace(/_/g, ' ')
+      : '';
+    return `<div class="ac-item" data-name="${escHtml(s.name)}">
+      <span class="ac-item-name">${escHtml(s.name)}</span>
+      ${cat ? `<span class="ac-item-cat">${escHtml(cat)}</span>` : ''}
+    </div>`;
+  }).join('');
+  dd.style.display = 'block';
+  // Wire mouse clicks
+  dd.querySelectorAll('.ac-item').forEach(el => {
+    el.addEventListener('mousedown', e => {
+      e.preventDefault();
+      acPick(el.dataset.name);
+    });
+  });
+}
+
+function acPick(name) {
+  acSelected = name;
+  const inp = document.getElementById('songInput');
+  const btn = document.getElementById('guessBtn');
+  if (inp) inp.value = name;
+  if (btn) btn.disabled = false;
+  acHide();
+}
+
+function acHide() {
+  const dd = document.getElementById('acDropdown');
+  if (dd) dd.style.display = 'none';
+  acHiIndex = -1;
+}
+
+function acMoveHighlight(dir) {
+  const dd = document.getElementById('acDropdown');
+  if (!dd || dd.style.display === 'none') return false;
+  const items = [...dd.querySelectorAll('.ac-item')];
+  if (!items.length) return false;
+  items.forEach(i => i.classList.remove('hi'));
+  acHiIndex = Math.max(0, Math.min(items.length - 1, acHiIndex + dir));
+  items[acHiIndex].classList.add('hi');
+  const inp = document.getElementById('songInput');
+  if (inp) inp.value = items[acHiIndex].dataset.name;
+  return true;
+}
+
+function wireAcInput(inp) {
+  inp.addEventListener('input', () => {
+    const q = inp.value.trim();
+    const btn = document.getElementById('guessBtn');
+    acSelected = null;
+    if (btn) btn.disabled = q.length < 1;
+    clearTimeout(acTimer);
+    if (q.length < 2) { acHide(); return; }
+    acTimer = setTimeout(() => {
+      const results = acFilter(q);
+      acRender(results);
+    }, 150);
+  });
+
+  inp.addEventListener('keydown', e => {
+    const dd = document.getElementById('acDropdown');
+    const isOpen = dd && dd.style.display !== 'none';
+    if (e.key === 'ArrowDown')   { e.preventDefault(); acMoveHighlight(1); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); acMoveHighlight(-1); }
+    else if (e.key === 'Escape')  { acHide(); }
+    else if (e.key === 'Enter') {
+      if (isOpen && acHiIndex >= 0) {
+        e.preventDefault();
+        const items = dd.querySelectorAll('.ac-item');
+        if (items[acHiIndex]) acPick(items[acHiIndex].dataset.name);
+      } else {
+        const btn = document.getElementById('guessBtn');
+        if (btn && !btn.disabled) doGuess();
+      }
+    }
+  });
+
+  inp.addEventListener('blur', () => setTimeout(acHide, 180));
+}
+
+// ─────────────────────────────────────────────
+// GUESS LOGIC
+// ─────────────────────────────────────────────
+function doGuess(fromIKnowThis) {
+  const inp = document.getElementById('songInput');
+  if (!inp && !fromIKnowThis) return;
+  const val = fromIKnowThis
+    ? (acSelected || (inp ? inp.value : '')).trim()
+    : (acSelected || inp.value).trim();
+  acSelected = null;
+  if (!val) return;
+
+  stopAudio();
+  const correct = checkGuess(val, song);
+  const catKey  = song.song?.category || 'unknown';
+  state.guesses.push({ title: val, correct, iKnowThis: !!fromIKnowThis });
+  state.replayCount = 0; // reset replays for next guess tier
+
+  if (correct) {
+    state.done = true;
+    state.won  = true;
+    setStreak(getStreak() + 1);
+    recordResult(true, state.guesses.length, catKey);
+  } else {
+    // Reveal next clue (skipped in hard mode)
+    if (!getDiff().noClues) {
+      const nextClueIndex = state.guesses.length - 1;
+      if (nextClueIndex < CLUE_DEFS.length) {
+        state.cluesRevealed.push(CLUE_DEFS[nextClueIndex].key);
+      }
+    }
+    if (state.guesses.length >= MAX_GUESSES) {
+      state.done = true;
+      state.won  = false;
+      setStreak(0);
+      recordResult(false, state.guesses.length, catKey);
+    }
+  }
+
+  render();
+}
+
+function iKnowThis() {
+  const inp = document.getElementById('songInput');
+  const val = (acSelected || (inp ? inp.value : '')).trim();
+  if (!val) {
+    if (inp) {
+      inp.focus();
+      inp.placeholder = 'Type the song name, then tap I Know This…';
+      inp.style.borderColor = 'var(--juice)';
+      inp.style.boxShadow = '0 0 0 3px rgba(176,106,255,0.15)';
+    }
+    toast('Type the song name first, then tap ⚡ I Know This!');
+    return;
+  }
+  doGuess(true);
+}
+
+function skipRound() {
+  // Show confirmation popup first
+  if (document.getElementById('skipConfirmOverlay')) return;
+  const ov = document.createElement('div');
+  ov.id = 'skipConfirmOverlay';
+  ov.style.cssText = 'position:fixed;inset:0;z-index:9000;background:rgba(5,5,10,0.82);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:1.5rem;animation:fadeIn 0.18s ease both;';
+  ov.innerHTML = `
+    <div style="background:var(--surface);border:1px solid var(--border-hi);border-radius:var(--radius-lg);padding:1.5rem;max-width:320px;width:100%;text-align:center;box-shadow:0 24px 64px rgba(0,0,0,0.7);animation:slideUp 0.25s cubic-bezier(0.34,1.2,0.64,1) both;">
+      <div style="font-size:2rem;margin-bottom:0.5rem">⏭️</div>
+      <div style="font-family:var(--font-disp);font-size:1.4rem;letter-spacing:0.06em;color:var(--text);margin-bottom:0.4rem">Skip this song?</div>
+      <div style="font-size:12.5px;color:var(--muted);line-height:1.6;margin-bottom:1.1rem">This counts as a loss and will<br>reset your current streak.</div>
+      <div style="display:flex;gap:8px;">
+        <button onclick="document.getElementById('skipConfirmOverlay').remove()"
+          style="flex:1;padding:9px;border:1px solid var(--border-hi);border-radius:var(--radius);background:transparent;color:var(--muted);font-family:var(--font-body);font-size:13px;cursor:pointer;">
+          Keep playing
+        </button>
+        <button onclick="confirmSkip()"
+          style="flex:1;padding:9px;border:1px solid rgba(224,92,58,0.4);border-radius:var(--radius);background:rgba(224,92,58,0.12);color:#e87878;font-family:var(--font-body);font-size:13px;font-weight:600;cursor:pointer;">
+          Yes, skip it
+        </button>
+      </div>
+    </div>`;
+  ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
+  document.body.appendChild(ov);
+}
+
+function confirmSkip() {
+  const ov = document.getElementById('skipConfirmOverlay');
+  if (ov) ov.remove();
+  stopAudio();
+  state.done    = true;
+  state.won     = false;
+  state.skipped = true;
+  setStreak(0);
+  recordResult(false, MAX_GUESSES, song?.song?.category || 'unknown');
+  render();
+}
+
+// ─────────────────────────────────────────────
+// SHARE
+// ─────────────────────────────────────────────
+function shareResult() {
+  const pips    = state.guesses.map(g => g.correct ? '🟩' : '🟥').join('');
+  const blanks  = '⬜'.repeat(Math.max(0, MAX_GUESSES - state.guesses.length));
+  const result  = state.won ? state.guesses.length + '/' + MAX_GUESSES : 'X/' + MAX_GUESSES;
+  const streak  = getStreak();
+  const best    = getBest();
+  const streakLine = state.won && streak > 1 ? `🔥 ${streak} streak` : (best > 0 ? `🏆 Best: ${best}` : '');
+  const diffLabel = difficulty !== 'normal' ? ` [${difficulty.charAt(0).toUpperCase()+difficulty.slice(1)}]` : '';
+  const text = [
+    `JuiceWRLDLE Round ${roundNum}${diffLabel} ${result}`,
+    `🎵 ${pips}${blanks}`,
+    streakLine,
+    `https://anicodle.com/juicewrldle`
+  ].filter(Boolean).join('\n');
+  if (navigator.share) {
+    navigator.share({ text }).catch(() => {});
+  } else {
+    navigator.clipboard.writeText(text)
+      .then(() => toast('Result copied!'))
+      .catch(() => toast('Copy failed'));
+  }
+}
+
+// ─────────────────────────────────────────────
+// LOAD ROUND
+// ─────────────────────────────────────────────
+async function loadRound() {
+  stopAudio();
+  roundNum++;
+  song  = null;
+  state = { guesses: [], done: false, won: false, cluesRevealed: [], startSec: null, replayCount: 0, skipped: false };
+
+  document.getElementById('main').innerHTML = `
+    <div class="loading-wrap"><div class="spinner"></div>Loading song…</div>
+    <div class="filter-panel" id="filterPanel" style="margin-top:1rem"></div>`;
+  renderFilterPanel();
+
+  try {
+    song = await fetchFilteredSong(); // retries internally if path missing
+    state.startSec = pickRandomStart(song);
+    render();
+    // Pre-buffer the audio immediately so it's ready when the user presses play.
+    // This runs in the background — the player UI is already visible above.
+    if (audio) { audio.pause(); audio = null; }
+    audio = new Audio();
+    audio.crossOrigin = 'anonymous';
+    audio.preload = 'auto';
+    audio.src = AUDIO_URL(song.path);
+    audio.load(); // trigger download without playing
+  } catch(e) {
+    const hasFilters = filters.categories.size > 0 || filters.eras.size > 0;
+    document.getElementById('main').innerHTML = `
+      <div class="loading-wrap">
+        <p style="color:var(--lose);margin-bottom:0.75rem">⚠️ Failed to load song</p>
+        <p style="font-size:12px;color:var(--muted);margin-bottom:1rem">${escHtml(e.message)}</p>
+        ${hasFilters ? `
+        <p style="font-size:12px;color:var(--accent);margin-bottom:0.75rem">
+          Your filters may be too restrictive — no playable songs were found.
+        </p>
+        <button class="btn-next" style="margin-bottom:0.5rem;background:var(--lose);border-color:var(--lose);"
+          onclick="clearFilters();loadRound()">Clear filters &amp; retry</button>
+        <br>` : ''}
+        <button class="btn-next" onclick="loadRound()" style="${hasFilters ? 'background:var(--surface2);color:var(--muted);border:1px solid var(--border-hi);margin-top:0.4rem' : ''}">
+          Try again
+        </button>
+      </div>`;
+    // Also re-render the filter panel so they can adjust without being stuck
+    setTimeout(() => {
+      const panel = document.getElementById('filterPanel');
+      if (panel) renderFilterPanel();
+    }, 50);
+  }
+}
+
+// ─────────────────────────────────────────────
+// UTILS
+// ─────────────────────────────────────────────
+function escHtml(s) {
+  return String(s || '')
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;');
+}
+
+function toast(msg) {
+  const t = document.getElementById('toast');
+  if (!t) return;
+  t.textContent = msg;
+  t.style.opacity = '1';
+  setTimeout(() => { t.style.opacity = '0'; }, 2200);
+}
+
+// ─────────────────────────────────────────────
+// AD-FREE
+// ─────────────────────────────────────────────
+const ADFREE_KEY = 'anicodle_adfree';
+function isAdFree() { return localStorage.getItem(ADFREE_KEY) === '1'; }
+function applyAdFree() {
+  document.querySelectorAll('.ad-slot, #adBottom').forEach(el => el.style.display = 'none');
+  const btn = document.getElementById('acAdFreeBtn');
+  const act = document.getElementById('acAdFreeActive');
+  if (btn) btn.style.display = 'none';
+  if (act) act.style.display = 'inline-flex';
+}
+if (isAdFree()) applyAdFree();
+
+window.acShowAdFreeModal = function() {
+  const ov = document.createElement('div');
+  ov.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(5,5,10,0.88);display:flex;align-items:center;justify-content:center;padding:1.5rem;';
+  ov.innerHTML = '<div style="background:#13131a;border:1px solid rgba(255,255,255,0.15);border-radius:8px;padding:2rem 2.25rem;max-width:380px;width:100%;text-align:center;font-family:DM Sans,sans-serif;">'
+    + '<div style="font-size:2rem;margin-bottom:.5rem">✨</div>'
+    + '<div style="font-family:Bebas Neue,sans-serif;font-size:1.6rem;letter-spacing:.08em;color:#e8c840;margin-bottom:.4rem">Remove Ads</div>'
+    + '<p style="font-size:.82rem;color:#7a7a8c;margin-bottom:1rem;line-height:1.6">Enter your license key to unlock ad-free permanently.</p>'
+    + '<input id="acLicInput" type="text" placeholder="XXXXXXXX-XXXXXXXX-XXXXXXXX-XXXXXXXX" maxlength="39" style="width:100%;padding:9px 12px;background:#1d1d28;border:1px solid rgba(255,255,255,0.15);border-radius:4px;color:#f0eee8;font-family:monospace;font-size:12px;letter-spacing:.05em;outline:none;text-transform:uppercase;margin-bottom:.4rem"/>'
+    + '<p id="acLicErr" style="font-size:11px;color:#e87878;display:none;margin-bottom:.5rem;">Invalid or unrecognized key.</p>'
+    + '<button id="acLicSubmit" style="width:100%;padding:9px;background:#e8c840;border:none;border-radius:4px;color:#0b0b0f;font-family:Bebas Neue,sans-serif;font-size:13px;letter-spacing:.06em;cursor:pointer;margin-bottom:.6rem">Unlock ad-free</button>'
+    + '<p style="font-size:11px;color:#4a4a5c;margin-bottom:.5rem">— or —</p>'
+    + '<a href="https://epichackerman.gumroad.com/l/AniCodle" target="_blank" style="display:block;font-size:12px;color:#7a7a8c;text-decoration:none;">Buy a license key — $4.99 →</a>'
+    + '</div>';
+  document.body.appendChild(ov);
+  ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
+  const inp = ov.querySelector('#acLicInput'), err = ov.querySelector('#acLicErr'), sub = ov.querySelector('#acLicSubmit');
+  inp.addEventListener('input', () => {
+    let v = inp.value.replace(/[^A-Fa-f0-9]/g,'').toUpperCase(), f = '';
+    for (let i = 0; i < v.length && i < 32; i++) { if (i > 0 && i % 8 === 0) f += '-'; f += v[i]; }
+    inp.value = f; err.style.display = 'none';
+  });
+  sub.addEventListener('click', async () => {
+    const k = inp.value.trim();
+    if (!/^[A-F0-9]{8}-[A-F0-9]{8}-[A-F0-9]{8}-[A-F0-9]{8}$/i.test(k)) { err.style.display = 'block'; return; }
+    sub.textContent = 'Verifying…'; sub.disabled = true;
+    try {
+      const r = await fetch('https://api.gumroad.com/v2/licenses/verify', { method: 'POST', headers: {'Content-Type': 'application/x-www-form-urlencoded'}, body: 'product_permalink=AniCodle&license_key=' + encodeURIComponent(k) });
+      const d = await r.json();
+      if (d.success) { localStorage.setItem(ADFREE_KEY,'1'); ov.remove(); applyAdFree(); }
+      else { err.style.display = 'block'; sub.textContent = 'Unlock ad-free'; sub.disabled = false; }
+    } catch { localStorage.setItem(ADFREE_KEY,'1'); ov.remove(); applyAdFree(); }
+  });
+  setTimeout(() => inp.focus(), 80);
+};
+
+// ─────────────────────────────────────────────
+// GDPR BANNER
+// ─────────────────────────────────────────────
+(function() {
+  const K = 'ac_cookie_consent';
+  const c = localStorage.getItem(K);
+  const s = document.createElement('style');
+  s.textContent = '#ac-gdpr{position:fixed;bottom:1.25rem;left:50%;transform:translateX(-50%);z-index:9999;width:calc(100% - 2.5rem);max-width:680px;background:#13131a;border:1px solid rgba(255,255,255,0.15);border-radius:10px;box-shadow:0 8px 40px rgba(0,0,0,0.75);padding:1.1rem 1.4rem;display:flex;align-items:flex-start;gap:1rem;flex-wrap:wrap;font-family:"DM Sans",sans-serif;animation:acIn .35s cubic-bezier(.34,1.2,.64,1) both;}@keyframes acIn{from{opacity:0;transform:translateX(-50%) translateY(24px);}to{opacity:1;transform:translateX(-50%) translateY(0);}}#ac-gdpr.ac-out{animation:acOut .25s ease forwards;}@keyframes acOut{to{opacity:0;transform:translateX(-50%) translateY(20px);}}.acgb{flex:1;min-width:180px;}.acgbt{font-family:"Bebas Neue",sans-serif;font-size:1rem;letter-spacing:.08em;color:#f0eee8;margin-bottom:.3rem;}.acgbp{font-size:.76rem;color:#7a7a8c;line-height:1.6;}.acgbp a{color:#e8c840;text-decoration:none;border-bottom:1px solid rgba(232,200,64,.3);}.acgbtns{display:flex;gap:.5rem;align-items:center;flex-shrink:0;}.acbtnA{padding:.5rem 1.2rem;background:#e8c840;border:none;border-radius:4px;color:#0b0b0f;font-family:"Bebas Neue",sans-serif;font-size:.9rem;letter-spacing:.06em;cursor:pointer;transition:opacity .15s;}.acbtnA:hover{opacity:.85;}.acbtnD{padding:.5rem 1rem;background:transparent;border:1px solid rgba(255,255,255,.13);border-radius:4px;color:#7a7a8c;font-family:"Bebas Neue",sans-serif;font-size:.76rem;letter-spacing:.04em;cursor:pointer;}';
+  document.head.appendChild(s);
+  function applyConsent(v) {
+    if (v === 'declined') { window['ga-disable-G-2VLH2ZVY4S'] = true; }
+    else { window['ga-disable-G-2VLH2ZVY4S'] = false; }
+  }
+  if (c) { applyConsent(c); return; }
+  function show() {
+    const b = document.createElement('div'); b.id = 'ac-gdpr';
+    b.innerHTML = '<div class="acgb"><div class="acgbt">🍪 Cookie Consent</div><div class="acgbp">We use cookies for analytics and ads. <a href="/privacy">Privacy Policy →</a></div></div><div class="acgbtns"><button class="acbtnD" id="acD">Decline</button><button class="acbtnA" id="acA">Accept</button></div>';
+    document.body.appendChild(b);
+    function dismiss(v) { localStorage.setItem(K, v); applyConsent(v); b.classList.add('ac-out'); setTimeout(() => b.remove(), 280); }
+    document.getElementById('acA').onclick = () => dismiss('accepted');
+    document.getElementById('acD').onclick = () => dismiss('declined');
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', show); else show();
+})();
+
+// ─────────────────────────────────────────────
+// MODE SWITCHING
+// ─────────────────────────────────────────────
+function switchStatTab(btn, tabId) {
+  document.querySelectorAll('.sdt').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.stat-tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  const tab = document.getElementById(tabId);
+  if (tab) tab.classList.add('active');
+}
+
+// ─────────────────────────────────────────────
+// VOLUME CONTROL
+// ─────────────────────────────────────────────
+function setVolume(val) {
+  currentVol = parseInt(val) / 100;
+  localStorage.setItem(VOL_KEY, String(currentVol));
+  if (audio) audio.volume = currentVol;
+  // Update slider fill + label without full re-render
+  const slider = document.getElementById('volSlider');
+  const pct    = document.getElementById('volPct');
+  const icon   = document.getElementById('volIcon');
+  if (slider) slider.style.setProperty('--vol-pct', val + '%');
+  if (pct)    pct.textContent = val + '%';
+  if (icon)   icon.textContent = currentVol === 0 ? '🔇' : currentVol < 0.4 ? '🔉' : '🔊';
+}
+
+function toggleMute() {
+  if (currentVol > 0) {
+    prevVol = currentVol;
+    setVolume(0);
+    const slider = document.getElementById('volSlider');
+    if (slider) slider.value = 0;
+  } else {
+    const restore = prevVol > 0 ? prevVol : 0.8;
+    setVolume(Math.round(restore * 100));
+    const slider = document.getElementById('volSlider');
+    if (slider) slider.value = Math.round(restore * 100);
+  }
+}
+
+// ─────────────────────────────────────────────
+// SHARE STATS
+// ─────────────────────────────────────────────
+function shareStats() {
+  const s    = getStats();
+  const dist = s.dist || [0,0,0,0,0,0];
+  const bars = dist.map((v, i) => {
+    const block = v > 0 ? '█'.repeat(Math.min(v, 10)) : '▒';
+    return `${i+1}  ${block} ${v}`;
+  }).join('\n');
+
+  const catEntries = Object.entries(s.cats || {}).sort((a,b) => b[1]-a[1]);
+  const topCat = catEntries.length
+    ? catEntries[0][0].charAt(0).toUpperCase() + catEntries[0][0].slice(1).replace(/_/g,' ')
+    : null;
+
+  const lines = [
+    '🎵 JuiceWRLDLE Stats',
+    '',
+    `🔥 Streak: ${getStreak()}   🏆 Best: ${getBest()}`,
+    `✅ Win rate: ${winRate()}%   🎵 Played: ${s.rounds}`,
+    '',
+    'Guess distribution:',
+    bars,
+    topCat ? `
+Most wins: ${topCat}` : '',
+    '',
+    'https://anicodle.com/juicewrldle',
+  ].filter(l => l !== undefined).join('\n');
+
+  if (navigator.share) {
+    navigator.share({ text: lines }).catch(() => {});
+  } else {
+    navigator.clipboard.writeText(lines)
+      .then(() => toast('Stats copied to clipboard!'))
+      .catch(() => toast('Copy failed'));
+  }
+}
+
+// ─────────────────────────────────────────────
+// FEEDBACK
+// ─────────────────────────────────────────────
+// Paste your Google Apps Script Web App URL here after setup:
+const FEEDBACK_URL = 'https://script.google.com/macros/s/AKfycbxlMqw1adcIqVvkKkKOwZqwKW7HaELhSCxevLN9KTLN_HWzI-sPwvw9Bh2cvu1W3ycLbQ/exec';
+
+let fbType = 'Bug report';
+
+function openFeedback() {
+  if (document.getElementById('feedbackOverlay')) return;
+  const ov = document.createElement('div');
+  ov.className = 'feedback-overlay';
+  ov.id = 'feedbackOverlay';
+  const types = ['Bug report', 'Song request', 'Feature idea', 'Other'];
+  const typeChips = types.map(t =>
+    `<button class="fb-type ${t === fbType ? 'active' : ''}"
+      onclick="selectFbType(this,'${t}')">${t}</button>`
+  ).join('');
+  const pageName = (song?.song?.name || song?.title)
+    ? `Playing: ${escHtml(song.song?.name || song.title)}`
+    : 'JuiceWRLDLE';
+  ov.innerHTML = `
+    <div class="feedback-card">
+      <div class="feedback-header">
+        <span class="feedback-title">💬 Feedback</span>
+        <button class="feedback-close" onclick="closeFeedback()">✕</button>
+      </div>
+      <div class="feedback-body">
+        <div class="feedback-label">Type</div>
+        <div class="feedback-type-row">${typeChips}</div>
+        <div class="feedback-label">Message</div>
+        <textarea class="feedback-textarea" id="fbText"
+          placeholder="Tell us what's on your mind — bugs, song requests, ideas…" maxlength="1000"></textarea>
+        <button class="feedback-submit" id="fbSubmit" onclick="submitFeedback()">Send feedback</button>
+        <div class="feedback-footer">Anonymous · ${escHtml(pageName)}</div>
+      </div>
+    </div>`;
+  ov.addEventListener('click', e => { if (e.target === ov) closeFeedback(); });
+  document.body.appendChild(ov);
+  setTimeout(() => ov.querySelector('textarea')?.focus(), 100);
+}
+
+function closeFeedback() {
+  const ov = document.getElementById('feedbackOverlay');
+  if (!ov) return;
+  ov.style.animation = 'fadeOut 0.18s ease forwards';
+  setTimeout(() => ov.remove(), 200);
+}
+
+function selectFbType(btn, type) {
+  fbType = type;
+  document.querySelectorAll('.fb-type').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+async function submitFeedback() {
+  const text = document.getElementById('fbText')?.value?.trim();
+  if (!text) { toast('Please write something first!'); return; }
+
+  const btn = document.getElementById('fbSubmit');
+  if (btn) { btn.disabled = true; btn.textContent = 'Sending…'; }
+
+  const payload = {
+    type:      fbType,
+    message:   text,
+    page:      'JuiceWRLDLE',
+    song:      song?.song?.name || song?.title || '',
+    round:     roundNum,
+    difficulty: difficulty,
+    timestamp: new Date().toISOString(),
+  };
+
+  // Use an Image ping — browsers never block cross-origin image requests,
+  // making this the only fully reliable way to hit Apps Script from a
+  // browser without a backend. Apps Script receives it as a normal GET.
+  try {
+    const qs = Object.entries(payload)
+      .map(([k, v]) => encodeURIComponent(k) + '=' + encodeURIComponent(v))
+      .join('&');
+    await new Promise((resolve, reject) => {
+      const img = new Image();
+      // onload = Apps Script responded (even with an image error, the request went through)
+      // onerror = same — the request still hit the server, just can't read the response
+      img.onload  = resolve;
+      img.onerror = resolve;  // resolve on error too — the GET still fired
+      setTimeout(resolve, 4000); // fallback timeout if no response
+      img.src = FEEDBACK_URL + '?' + qs;
+    });
+    closeFeedback();
+    toast('Thanks for the feedback! 🙏');
+  } catch(e) {
+    if (btn) { btn.disabled = false; btn.textContent = 'Send feedback'; }
+    toast('Failed to send — check your connection');
+  }
+}
+
+// ─────────────────────────────────────────────
+// HOW TO PLAY
+// ─────────────────────────────────────────────
+const SEEN_KEY = 'jwrlddle_seen_howto';
+
+function showHowTo() {
+  const ov = document.createElement('div');
+  ov.className = 'howto-overlay';
+  ov.id = 'howtoOverlay';
+  ov.innerHTML = `
+    <div class="howto-card">
+      <div class="howto-top">
+        <div class="howto-game-title">JUICE<span>WRLD</span>LE</div>
+        <div class="howto-tagline">How to play</div>
+      </div>
+      <div class="howto-body">
+        <div class="howto-steps">
+          <div class="howto-step">
+            <div class="howto-step-icon">▶</div>
+            <div class="howto-step-text">
+              <div class="howto-step-title">Listen to the clip</div>
+              <div class="howto-step-desc">Press play to hear a short snippet of a Juice WRLD song. You start with just <b>3 seconds</b>.</div>
+            </div>
+          </div>
+          <div class="howto-step">
+            <div class="howto-step-icon">🎵</div>
+            <div class="howto-step-text">
+              <div class="howto-step-title">Guess the song</div>
+              <div class="howto-step-desc">Type the song title and select it from the dropdown. You have <b>6 guesses</b> total.</div>
+            </div>
+          </div>
+          <div class="howto-step">
+            <div class="howto-step-icon">⏱</div>
+            <div class="howto-step-text">
+              <div class="howto-step-title">Wrong? Get more time</div>
+              <div class="howto-step-desc">Each wrong guess reveals a clue <b>and</b> adds <b>2 more seconds</b> to the next clip.</div>
+            </div>
+          </div>
+        </div>
+
+        <div style="font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.5rem;font-weight:600">Clues revealed per wrong guess</div>
+        <div class="howto-clue-row">
+          <div class="howto-clue-pill"><span class="n">1</span> Era</div>
+          <div class="howto-clue-pill"><span class="n">2</span> Length</div>
+          <div class="howto-clue-pill"><span class="n">3</span> # Letters</div>
+          <div class="howto-clue-pill"><span class="n">4</span> First letter</div>
+          <div class="howto-clue-pill"><span class="n">5</span> Last letter</div>
+          <div class="howto-clue-pill"><span class="n">6</span> Producer</div>
+        </div>
+
+        <button class="howto-start-btn" onclick="dismissHowTo()">Let's go 🎵</button>
+        <div class="howto-footer">Tap anywhere outside to close · won't show again</div>
+      </div>
+    </div>
+  `;
+  // Tap outside card to dismiss
+  ov.addEventListener('click', e => { if (e.target === ov) dismissHowTo(); });
+  document.body.appendChild(ov);
+}
+
+function dismissHowTo() {
+  const ov = document.getElementById('howtoOverlay');
+  if (!ov) return;
+  ov.style.animation = 'fadeOut 0.2s ease forwards';
+  setTimeout(() => ov.remove(), 200);
+  localStorage.setItem(SEEN_KEY, '1');
+}
+
+// ─────────────────────────────────────────────
+// BOOT
+// ─────────────────────────────────────────────
+loadFilters();
+loadRound();
+// Show how-to on first ever visit
+if (!localStorage.getItem(SEEN_KEY)) {
+  // Small delay so the game loads behind it first
+  setTimeout(showHowTo, 600);
+}
+</script>
+<script>(function(){var fy=document.getElementById('ac-footer-year');if(fy)fy.textContent=new Date().getFullYear();}());</script>
+</body>
+</html>
