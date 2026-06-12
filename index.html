@@ -509,9 +509,9 @@
 //  CONSTANTS
 // ══════════════════════════════════════════════
 const API_BASE    = 'https://juicewrld-proxy.epichackermanmilk.workers.dev';
-const AUDIO_URL   = path => `${API_BASE}/files/download/path=${encodeURIComponent(path)}`;
+const AUDIO_URL   = path => `${API_BASE}/files/download?path=${encodeURIComponent(path)}`;
 const IMG_BASE    = 'https://juicewrldapi.com';
-const MAX_GUESSES = 6;
+const MAX_GUESSES = 7;
 const STATS_KEY   = 'jwdle_stats_v2';
 const FILTER_KEY  = 'jwdle_filters_v2';
 const DIFF_KEY    = 'jwdle_diff_v2';
@@ -570,7 +570,7 @@ function recordResult(won, guessNum) {
 
 // ══════════════════════════════════════════════
 //  DIFFICULTY
-// ══════════════════════════════════════════════
+// ════════════════════════════════════════════
 function getClipBase()     { return DIFF[difficulty].clipBase; }
 function getClipStep()     { return DIFF[difficulty].clipStep; }
 function getMaxPlays()     { return DIFF[difficulty].maxPlays; }
@@ -677,7 +677,6 @@ function playClip() {
   render(); // update play count display immediately
   if (!audio) {
     audio = new Audio();
-    audio.crossOrigin = 'anonymous';
     audio.volume = effectiveVolume();
     audio.src = AUDIO_URL(song.path);
     audio.addEventListener('error', () => {
@@ -918,6 +917,7 @@ function render() {
   // Slots
   const slots = Array.from({length: MAX_GUESSES}, (_,i) => {
     const g = state.guesses[i];
+    l
     let cls='', icon='';
     if (g) { cls = g.correct?'correct':g.skipped?'skipped':'wrong'; icon = g.correct?'✓':g.skipped?'–':'✗'; }
     else if (i===gIdx && !isDone) { cls='active'; icon='♪'; }
@@ -966,7 +966,7 @@ function render() {
     resultHtml = `
       <div class="card result-card">
         <div class="result-emoji">${state.won?'🎉':'💀'}</div>
-        <div class="result-headline ${state.won?'won':'lost'}">${state.won?`Correct! (Guess #${state.guesses.filter(g=>!g.skipped).length})`:'The song was…'}|/div>
+        <div class="result-headline ${state.won?'won':'lost'}">${state.won?`Correct! (Guess #${state.guesses.filter(g=>!g.skipped).length})`:'The song was…'}</div>
         <div class="result-song">${esc(songName)}</div>
         ${imgSrc?`<img class="result-cover" src="${esc(imgSrc)}" onerror="this.style.display='none'" alt="${esc(songName)}">`:''}
         <div class="result-meta">
@@ -991,7 +991,7 @@ function render() {
       <div class="action-row">
         <button class="btn btn-primary" onclick="doGuess()">Guess</button>
         <button class="btn btn-ghost"   onclick="askSkip()">Skip ›</button>
-        <button class="btn btn-ghost"   onclick="doGiveUp()" title="Give up and see the answer">Give Up</button>
+        <button class="btn btn-ghost"   onclick="askGiveUp()" title="Give up and see the answer">Give Up</button>
       </div>
     </div>`;
 
@@ -1094,8 +1094,16 @@ function doGiveUp() {
 function askSkip() {
   if (!state || state.done) return;
   document.getElementById('confirmBg').classList.remove('hidden');
-  document.getElementById('confirmMsg').textContent = 'Skip this song?';
+  document.getElementById('confirmMsg').textContent = 'Skip a turn?';
+  document.getElementById('confirmOk').textContent = 'Skip';
   document.getElementById('confirmOk').onclick = () => { closeConfirm(); doSkip(); };
+}
+function askGiveUp() {
+  if (!state || state.done) return;
+  document.getElementById('confirmBg').classList.remove('hidden');
+  document.getElementById('confirmMsg').textContent = 'Give up and reveal the answer?';
+  document.getElementById('confirmOk').textContent = 'Give Up';
+  document.getElementById('confirmOk').onclick = () => { closeConfirm(); doGiveUp(); };
 }
 function closeConfirm() { document.getElementById('confirmBg').classList.add('hidden'); }
 
@@ -1221,7 +1229,6 @@ async function loadRound() {
     state.startSec = pickRandomStart(song);
     render();
     audio = new Audio();
-    audio.crossOrigin = 'anonymous';
     audio.preload = 'auto';
     audio.volume  = effectiveVolume();
     audio.src = AUDIO_URL(song.path);
@@ -1310,12 +1317,4 @@ function spawnNines() {
   }
 }
 
-// ══════════════════════════════════════════════
-//  BOOT
-// ══════════════════════════════════════════════
-loadFilters();
-spawnNines();
-loadRound();
-</script>
-</body>
-</html>
+// ═�
