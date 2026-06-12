@@ -966,7 +966,7 @@ function render() {
     resultHtml = `
       <div class="card result-card">
         <div class="result-emoji">${state.won?'🎉':'💀'}</div>
-        <div class="result-headline ${state.won?'won':'lost'}">${state.won?`Correct! (Guess #${state.guesses.filter(g=>!g.skipped).length})`:'The song was…'}</div>
+        <div class="result-headline ${state.won?'won':'lost'}">${state.won?`Correct! (Guess #${state.guesses.filter(g=>!g.skipped).length})`:'The song was…'}|/div>
         <div class="result-song">${esc(songName)}</div>
         ${imgSrc?`<img class="result-cover" src="${esc(imgSrc)}" onerror="this.style.display='none'" alt="${esc(songName)}">`:''}
         <div class="result-meta">
