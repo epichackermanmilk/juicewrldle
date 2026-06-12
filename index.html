@@ -695,35 +695,65 @@ async function getDailySong(dateKey) {
   const cached = loadCachedSong(dateKey);
   if (cached && cached.path) return cached;
 
-  // 2. Load songs list to get deterministic target
+  // 2. Load songs list to get deterministic target name
   await ensureAcCache();
   if (!acCache || acCache.length === 0) throw new Error('Song list unavailable');
 
-  const dayIdx = getDayIndex(dateKey);
-  const idx = ((dayIdx % acCache.length) + acCache.length) % acCache.length;
-  const target = acCache[idx];
+  const dayIdx   = getDayIndex(dateKey);
+  const idx      = ((dayIdx % acCache.length) + acCache.length) % acCache.length;
+  const target   = acCache[idx];
   const targetNorm = normalize(target.name);
 
-  // 3. Try /songs/?search=name endpoint (DRF search)
+  // 3. Primary: GET /songs/?search=name&file_names_array=true
+  //    The songs endpoint returns file_names (audio paths) for each song.
+  //    This guarantees everyone gets the same song — fully deterministic.
   try {
-    const searchUrl = `${API_BASE}/songs/?search=${encodeURIComponent(target.name)}&format=json`;
-    const r = await fetch(searchUrl);
+    const url = `${API_BASE}/songs/?search=${encodeURIComponent(target.name)}&file_names_array=true&page_size=10`;
+    const r = await fetch(url);
     if (r.ok) {
       const data = await r.json();
       const results = Array.isArray(data) ? data : (data.results || []);
+
+      // Find exact name match
       const match = results.find(s => {
-        const n = normalize((s.song && s.song.name) || s.name || s.title || '');
+        const n = normalize(s.name || '');
         return n === targetNorm || normalize(stripVersion(n)) === normalize(stripVersion(target.name));
       });
-      if (match && match.path) {
-        saveDailySong(dateKey, match);
-        return match;
+
+      if (match) {
+        // file_names is an array (because we passed file_names_array=true)
+        const files = Array.isArray(match.file_names)
+          ? match.file_names
+          : (match.file_names ? String(match.file_names).split(',').map(s => s.trim()) : []);
+
+        if (files.length > 0) {
+          // Pick file deterministically — same index for all users on same day
+          const path = files[dayIdx % files.length];
+
+          const songObj = {
+            path,
+            title: match.name,
+            song: {
+              name:          match.name,
+              era:           match.era,          // {name:'...'} or string
+              length:        match.length        || '',
+              producers:     match.producers     || '',
+              track_titles:  match.track_titles  || [],
+              category:      match.category      || '',
+              image_url:     match.image_url     || null,
+              release_date:  match.release_date  || null,
+            },
+          };
+          saveDailySong(dateKey, songObj);
+          return songObj;
+        }
       }
     }
-  } catch(e) {}
+  } catch(e) {
+    console.warn('[JuiceWRLDLE] Songs API search failed:', e.message);
+  }
 
-  // 4. Fallback: fetch random songs, collect any that match
-  //    Also return the first valid song found (worst-case fallback)
+  // 4. Fallback: fetch random songs and match by name (up to 25 tries)
   let anyValid = null;
   for (let i = 0; i < 25; i++) {
     try {
@@ -741,8 +771,7 @@ async function getDailySong(dateKey) {
     await new Promise(res => setTimeout(res, 150));
   }
 
-  // 5. Last resort: use whatever random song we got
-  //    (same device gets same song all day via cache)
+  // 5. Last resort: use any valid song fetched (cached per device all day)
   if (anyValid) {
     saveDailySong(dateKey, anyValid);
     return anyValid;
