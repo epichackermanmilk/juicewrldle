@@ -3,10 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>JuiceWRLDLE — Guess the Juice WRLD Song</title>
-  <meta name="description" content="Guess the Juice WRLD song from a short audio clip. Released, unreleased, and everything in between.">
+  <title>JuiceWRLDLE — Daily Juice WRLD Song Game</title>
+  <meta name="description" content="Guess today's Juice WRLD song from a short audio clip. New song every day.">
   <meta property="og:title" content="JuiceWRLDLE">
-  <meta property="og:description" content="Guess the Juice WRLD song from a short audio clip.">
+  <meta property="og:description" content="Guess the daily Juice WRLD song from a short audio clip.">
   <meta property="og:url" content="https://juicewrldle.cc">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎵</text></svg>">
   <style>
@@ -88,6 +88,10 @@
       vertical-align:super; margin-left:4px; letter-spacing:0.04em;
     }
     .tagline { font-size:0.82rem; color:var(--text2); margin-top:6px; letter-spacing:0.06em; }
+    .date-badge {
+      font-size:0.75rem; color:var(--text3); margin-top:4px; letter-spacing:0.04em;
+      opacity:0.85;
+    }
     .header-btns { display:flex; gap:7px; justify-content:center; margin-top:14px; flex-wrap:wrap; }
     .hbtn {
       background:var(--glass); border:1px solid var(--glass-border); border-radius:8px;
@@ -129,6 +133,8 @@
     .play-btn:active { transform:scale(0.96); }
     .play-btn svg { width:22px; height:22px; fill:#fff; display:block; margin:auto; }
     .play-btn.playing { box-shadow:0 0 40px rgba(232,121,249,.8),0 2px 8px rgba(0,0,0,.4); }
+    .play-btn.used { opacity:0.5; cursor:default; }
+    .play-btn.used:hover { transform:none; box-shadow:0 0 24px rgba(168,85,247,.55),0 2px 8px rgba(0,0,0,.4); }
     .waveform-wrap { flex:1; height:52px; position:relative; }
     .waveform-canvas { width:100%; height:100%; display:block; border-radius:8px; }
     .player-meta {
@@ -139,7 +145,9 @@
       background:var(--glass); border:1px solid var(--glass-border);
       border-radius:20px; padding:2px 10px;
       display:inline-flex; align-items:center; gap:4px;
+      font-size:.7rem;
     }
+    .plays-pill.used { opacity:0.5; }
     .clip-label { color:var(--text3); font-weight:600; }
 
     /* ── VOLUME SLIDER ── */
@@ -176,6 +184,19 @@
       color:#fca5a5; margin-bottom:12px; display:flex; gap:8px; align-items:flex-start;
     }
     .blocker-banner.hidden { display:none; }
+
+    /* ── HISTORY BANNER (playing past day) ── */
+    .history-banner {
+      background:rgba(109,40,217,.1); border:1px solid rgba(168,85,247,.25);
+      border-radius:10px; padding:9px 14px; font-size:.82rem;
+      color:var(--text2); margin-bottom:10px;
+      display:flex; align-items:center; justify-content:space-between; gap:8px;
+    }
+    .link-btn {
+      background:none; border:none; color:var(--purple3); cursor:pointer;
+      font-size:.82rem; text-decoration:underline; padding:0; white-space:nowrap;
+    }
+    .link-btn:hover { color:var(--text); }
 
     /* ── GUESS SLOTS ── */
     .guess-slots { display:flex; gap:5px; margin-bottom:14px; }
@@ -250,6 +271,9 @@
     .btn-full { width:100%; display:block; text-align:center; }
 
     /* ── CLUES ── */
+    .clues-header {
+      display:flex; justify-content:space-between; align-items:center; margin-bottom:9px;
+    }
     .clues-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:7px; }
     .clue-card {
       background:var(--glass); border:1px solid var(--glass-border);
@@ -259,13 +283,19 @@
       background:rgba(139,92,246,.11); border-color:rgba(168,85,247,.32);
       box-shadow:0 0 14px rgba(168,85,247,.14);
     }
-    /* era is always visible upfront — give it a distinct style */
-    .clue-card.era-upfront {
-      background:rgba(109,40,217,.14); border-color:rgba(168,85,247,.4);
-    }
     .clue-lbl { font-size:.62rem; text-transform:uppercase; letter-spacing:.09em; color:var(--text2); margin-bottom:4px; font-weight:600; }
     .clue-val { font-size:.85rem; font-weight:700; color:var(--purple3); line-height:1.2; word-break:break-word; }
     .clue-dash { width:55%; height:3px; background:rgba(167,139,250,.18); border-radius:2px; margin:7px auto 3px; }
+
+    /* ── HINT BUTTON ── */
+    .hint-btn {
+      padding:5px 12px; font-size:.76rem; border-radius:7px;
+      background:rgba(168,85,247,.1); border:1px solid rgba(168,85,247,.3);
+      color:var(--purple3); cursor:pointer; transition:all .18s; font-weight:600;
+    }
+    .hint-btn:hover { background:rgba(168,85,247,.2); border-color:var(--accent); color:var(--text); }
+    .hint-btn.no-hints { opacity:0.4; cursor:not-allowed; }
+    .hint-btn.no-hints:hover { background:rgba(168,85,247,.1); border-color:rgba(168,85,247,.3); color:var(--purple3); }
 
     /* ── RESULT ── */
     .result-card { text-align:center; }
@@ -288,24 +318,17 @@
     .meta-item { background:var(--glass); border:1px solid var(--glass-border); border-radius:8px; padding:8px 12px; }
     .meta-item label { font-size:.62rem; text-transform:uppercase; letter-spacing:.07em; color:var(--text2); display:block; margin-bottom:2px; }
     .meta-item span { font-size:.86rem; font-weight:600; }
-    .result-actions { display:flex; gap:7px; }
-
-    /* ── DIFFICULTY ── */
-    .diff-tabs {
-      display:flex; gap:5px; background:rgba(109,40,217,.06);
-      border:1px solid var(--glass-border); border-radius:10px; padding:4px;
+    .result-actions { display:flex; gap:7px; align-items:center; }
+    .next-game-wrap {
+      flex:1; background:var(--glass); border:1px solid var(--glass-border);
+      border-radius:9px; padding:9px 12px; text-align:center; font-size:.79rem; color:var(--text2);
     }
-    .diff-tab {
-      flex:1; padding:7px; border-radius:7px; border:none; background:transparent;
-      color:var(--text2); font-size:.79rem; font-weight:600; cursor:pointer; transition:all .18s; letter-spacing:.02em;
-    }
-    .diff-tab.active {
-      background:linear-gradient(130deg,var(--purple1),var(--accent));
-      color:#fff; box-shadow:0 2px 12px rgba(168,85,247,.32);
+    .history-badge {
+      font-size:.77rem; color:var(--text3); margin-bottom:6px; letter-spacing:.03em;
     }
 
     /* ── MISC ── */
-    .sec-lbl { font-size:.68rem; text-transform:uppercase; letter-spacing:.1em; color:var(--text2); font-weight:700; margin-bottom:9px; }
+    .sec-lbl { font-size:.68rem; text-transform:uppercase; letter-spacing:.1em; color:var(--text2); font-weight:700; }
     .divider { height:1px; background:var(--glass-border); margin:14px 0; }
     .hidden { display:none!important; }
     .mt-8 { margin-top:8px; }
@@ -346,7 +369,7 @@
     }
     .modal-x:hover { background:var(--glass); color:var(--text); }
 
-    /* How to play */
+    /* ── HOW TO PLAY ── */
     .howto-step { display:flex; gap:12px; margin-bottom:14px; align-items:flex-start; }
     .howto-num {
       width:28px; height:28px; flex-shrink:0; border-radius:50%;
@@ -356,7 +379,7 @@
     .howto-text { font-size:.87rem; color:var(--text); line-height:1.55; padding-top:4px; }
     .howto-text strong { color:var(--purple3); }
 
-    /* Stats */
+    /* ── STATS ── */
     .stats-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:7px; margin-bottom:16px; }
     .stat-box { text-align:center; background:var(--glass); border:1px solid var(--glass-border); border-radius:10px; padding:10px 6px; }
     .stat-num {
@@ -376,16 +399,39 @@
     }
     .dist-bar.loss { background:linear-gradient(90deg,#991b1b,#dc2626); }
 
-    /* Filters */
-    .filter-row { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:10px; }
-    .f-chip {
-      padding:4px 12px; border-radius:20px; border:1px solid var(--glass-border);
-      background:var(--glass); color:var(--text2); font-size:.74rem; cursor:pointer; transition:all .18s;
+    /* ── HISTORY MODAL ── */
+    .hist-month { margin-bottom:18px; }
+    .hist-month-lbl {
+      font-size:.72rem; text-transform:uppercase; letter-spacing:.1em;
+      color:var(--text2); font-weight:700; margin-bottom:8px;
     }
-    .f-chip.on { background:rgba(139,92,246,.22); border-color:var(--accent); color:var(--purple3); }
-    .f-chip:hover { border-color:rgba(168,85,247,.42); }
+    .hist-days-grid {
+      display:grid; grid-template-columns:repeat(7,1fr); gap:5px;
+    }
+    .hist-day {
+      aspect-ratio:1; border-radius:8px; border:1px solid var(--glass-border);
+      background:var(--glass); cursor:pointer;
+      display:flex; flex-direction:column; align-items:center; justify-content:center;
+      gap:1px; transition:all .15s; padding:3px;
+    }
+    .hist-day:hover { background:var(--glass2); border-color:rgba(167,139,250,.35); }
+    .hist-day-icon { font-size:.85rem; line-height:1; }
+    .hist-day-num { font-size:.6rem; color:var(--text2); line-height:1; }
+    .hist-day.won { background:rgba(22,163,74,.12); border-color:rgba(22,163,74,.3); }
+    .hist-day.won:hover { background:rgba(22,163,74,.2); }
+    .hist-day.lost { background:rgba(220,38,38,.1); border-color:rgba(220,38,38,.25); }
+    .hist-day.lost:hover { background:rgba(220,38,38,.18); }
+    .hist-day.today { border-color:rgba(168,85,247,.5); background:rgba(168,85,247,.1); }
+    .hist-day.today .hist-day-num { color:var(--purple3); font-weight:700; }
+    .hist-day.active-day { box-shadow:0 0 0 2px var(--accent); }
+    .hist-day.partial { background:rgba(234,179,8,.08); border-color:rgba(234,179,8,.25); }
+    .hist-legend {
+      display:flex; gap:12px; flex-wrap:wrap; margin-bottom:14px;
+      font-size:.71rem; color:var(--text2);
+    }
+    .hist-legend span { display:flex; align-items:center; gap:4px; }
 
-    /* Confirm */
+    /* ── CONFIRM ── */
     .confirm-bg {
       position:fixed; inset:0; background:rgba(3,0,12,.75);
       z-index:900; display:flex; align-items:center; justify-content:center;
@@ -408,6 +454,7 @@
       .clues-grid { grid-template-columns:repeat(2,1fr); }
       .stats-grid { grid-template-columns:repeat(2,1fr); }
       .result-meta { grid-template-columns:1fr; }
+      .hist-days-grid { grid-template-columns:repeat(6,1fr); }
     }
   </style>
 </head>
@@ -425,7 +472,7 @@
 <!-- Confirm dialog -->
 <div class="confirm-bg hidden" id="confirmBg">
   <div class="confirm-box">
-    <p id="confirmMsg">Skip this song?</p>
+    <p id="confirmMsg">Skip this turn?</p>
     <div class="confirm-btns">
       <button class="btn btn-ghost" style="flex:1" onclick="closeConfirm()">Cancel</button>
       <button class="btn btn-danger" style="flex:1" id="confirmOk">Skip</button>
@@ -442,26 +489,23 @@
     </div>
     <div class="howto-step">
       <div class="howto-num">1</div>
-      <div class="howto-text">Press <strong>▶ Play</strong> to hear a short Juice WRLD audio clip. The <strong>Era</strong> is shown upfront as a free clue.</div>
+      <div class="howto-text">Press <strong>▶ Play</strong> to hear a short Juice WRLD audio clip. You get <strong>1 play per guess</strong> — use it wisely!</div>
     </div>
     <div class="howto-step">
       <div class="howto-num">2</div>
-      <div class="howto-text">Type a song name and select it from the dropdown. You get <strong>6 guesses</strong>.</div>
+      <div class="howto-text">Type a song name and select it from the dropdown, then click <strong>Guess</strong>. You have <strong>7 guesses</strong> total.</div>
     </div>
     <div class="howto-step">
       <div class="howto-num">3</div>
-      <div class="howto-text">Each wrong guess or skip <strong>extends the clip</strong> and reveals the next clue: Length → Letters → First → Last → Producer.</div>
+      <div class="howto-text">Each guess (right or wrong) unlocks a <strong>hint token</strong>. Click <strong>💡 Reveal Hint</strong> to spend a token and see a clue: Era → Length → Letters → First → Last → Producer.</div>
     </div>
     <div class="howto-step">
       <div class="howto-num">4</div>
-      <div class="howto-text">By your final guess you'll have seen all 6 clues. Songs span <strong>released, unreleased, leaked, and recording session</strong> material. Both official and leaked names are accepted.</div>
+      <div class="howto-text">Each wrong guess also <strong>extends the clip</strong> (+2s per guess). A new song drops every day — songs span <strong>released, unreleased, leaked, and recording session</strong> material.</div>
     </div>
-    <div class="divider"></div>
-    <div class="sec-lbl">Difficulty</div>
-    <div style="font-size:.82rem;color:var(--text2);line-height:1.8;">
-      <b style="color:var(--purple3)">Easy</b> — 5 s clip → +3 s/guess, 3 plays<br>
-      <b style="color:var(--purple3)">Normal</b> — 3 s clip → +2 s/guess, 2 plays<br>
-      <b style="color:var(--purple3)">Hard</b> — 3 s clip → +1 s/guess, 1 play, no clues
+    <div class="howto-step">
+      <div class="howto-num">5</div>
+      <div class="howto-text">Missed a day? Use <strong>📅 History</strong> to play any past day. History replays don't affect your stats.</div>
     </div>
   </div>
 </div>
@@ -477,25 +521,32 @@
   </div>
 </div>
 
-<!-- Filters Modal -->
-<div class="modal-overlay hidden" id="filterModal">
+<!-- Daily History Modal -->
+<div class="modal-overlay hidden" id="historyModal">
   <div class="modal">
     <div class="modal-hdr">
-      <span class="modal-title">Filters</span>
-      <button class="modal-x" onclick="closeModal('filterModal')">×</button>
+      <span class="modal-title">Daily History</span>
+      <button class="modal-x" onclick="closeModal('historyModal')">×</button>
     </div>
-    <div id="filterContent"></div>
+    <div class="hist-legend">
+      <span>🟣 Won</span>
+      <span>🔴 Lost</span>
+      <span>🟡 In Progress</span>
+      <span>⬜ Not Played</span>
+    </div>
+    <div id="historyContent"></div>
   </div>
 </div>
 
 <div class="app">
   <header>
     <div class="logo">JUICEWRLDLE<span class="logo-nine">999</span></div>
-    <div class="tagline">Guess the Juice WRLD song from the clip</div>
+    <div class="tagline">Guess the daily Juice WRLD song</div>
+    <div class="date-badge" id="dateBadge"></div>
     <div class="header-btns">
       <button class="hbtn" onclick="showHowTo()">? How to Play</button>
       <button class="hbtn" onclick="openStats()">📊 Stats</button>
-      <button class="hbtn" onclick="openFilters()">🎚 Filters</button>
+      <button class="hbtn" onclick="openHistory()">📅 History</button>
     </div>
   </header>
   <div id="blockerBanner" class="blocker-banner hidden">
@@ -508,46 +559,197 @@
 // ══════════════════════════════════════════════
 //  CONSTANTS
 // ══════════════════════════════════════════════
-const API_BASE    = 'https://juicewrld-proxy.epichackermanmilk.workers.dev';
-const AUDIO_URL   = path => `${API_BASE}/files/download?path=${encodeURIComponent(path)}`;
-const IMG_BASE    = 'https://juicewrldapi.com';
-const MAX_GUESSES = 7;
-const STATS_KEY   = 'jwdle_stats_v2';
-const FILTER_KEY  = 'jwdle_filters_v2';
-const DIFF_KEY    = 'jwdle_diff_v2';
+const API_BASE      = 'https://juicewrld-proxy.epichackermanmilk.workers.dev';
+const AUDIO_URL     = path => `${API_BASE}/files/download?path=${encodeURIComponent(path)}`;
+const IMG_BASE      = 'https://juicewrldapi.com';
+const MAX_GUESSES   = 7;
+const STATS_KEY     = 'jwdle_stats_v2';
+const HISTORY_KEY   = 'jwdle_history_v1';
+const DAILY_CACHE   = 'jwdle_daily_cache_v1';
+// Game epoch — day 0 of the daily game
+const GAME_EPOCH    = new Date('2025-01-01T00:00:00').getTime();
 
-// All clue keys in display order
-const CLUE_KEYS  = ['era','length','letters','first','last','producer'];
+// Locked to normal difficulty
+const CLIP_BASE  = 3;   // seconds for first guess
+const CLIP_STEP  = 2;   // seconds added per wrong guess
+const MAX_PLAYS  = 1;   // plays per guess turn
+
+// Clue reveal sequence (user-triggered)
+const CLUE_KEYS   = ['era','length','letters','first','last','producer'];
 const CLUE_LABELS = { era:'Era', length:'Length', letters:'Letters', first:'First Letter', last:'Last Letter', producer:'Producer' };
-
-// Clues revealed progressively after wrong guesses — era is shown upfront, so it's excluded here
-const CLUE_REVEAL_SEQ = ['length','letters','first','last','producer'];
-
-const DIFF = {
-  easy:   { clipBase:5, clipStep:3, maxPlays:3, noClues:false },
-  normal: { clipBase:3, clipStep:2, maxPlays:2, noClues:false },
-  hard:   { clipBase:3, clipStep:1, maxPlays:1, noClues:true  }, // 3s minimum on hard
-};
 
 // ══════════════════════════════════════════════
 //  STATE
 // ══════════════════════════════════════════════
-let song       = null;
-let state      = null;
-let audio      = null;
-let roundNum   = 0;
-let acCache    = null;
-let acLoading  = false;
-let acHiIdx    = -1;
-let waveCtx    = null;
-let waveAnimId = null;
-let waveData   = null;
-
-let difficulty  = localStorage.getItem(DIFF_KEY) || 'normal';
-let filters     = { categories: new Set(), eras: new Set(), mode: 'any' };
-let volume      = parseFloat(localStorage.getItem('jwdle_vol') || '1');
-let muted       = false;
+let song         = null;
+let state        = null;
+let audio        = null;
+let currentDate  = null;   // 'YYYY-MM-DD'
+let isHistoryMode = false;
+let acCache      = null;
+let acLoading    = false;
+let acHiIdx      = -1;
+let waveCtx      = null;
+let waveAnimId   = null;
+let waveData     = null;
+let volume       = parseFloat(localStorage.getItem('jwdle_vol') || '1');
+let muted        = false;
 let audioBlocked = false;
+
+// ══════════════════════════════════════════════
+//  DATE UTILITIES
+// ══════════════════════════════════════════════
+function getTodayKey() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function getDayIndex(dateKey) {
+  const d = new Date(dateKey + 'T00:00:00');
+  return Math.floor((d.getTime() - GAME_EPOCH) / 86400000);
+}
+function formatDate(dateKey) {
+  const [y, m, dy] = dateKey.split('-').map(Number);
+  const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  return `${months[m-1]} ${dy}, ${y}`;
+}
+function formatDateShort(dateKey) {
+  const [y, m, dy] = dateKey.split('-').map(Number);
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return `${months[m-1]} ${dy}, ${y}`;
+}
+
+// ══════════════════════════════════════════════
+//  GAME STATE STORAGE
+// ══════════════════════════════════════════════
+function saveGameState(dateKey, st) {
+  try {
+    const all = JSON.parse(localStorage.getItem(HISTORY_KEY) || '{}');
+    all[dateKey] = { ...st };
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(all));
+  } catch(e) {}
+}
+function loadGameState(dateKey) {
+  try {
+    const all = JSON.parse(localStorage.getItem(HISTORY_KEY) || '{}');
+    return all[dateKey] || null;
+  } catch { return null; }
+}
+function getAllHistory() {
+  try { return JSON.parse(localStorage.getItem(HISTORY_KEY) || '{}'); }
+  catch { return {}; }
+}
+
+// ══════════════════════════════════════════════
+//  DAILY SONG CACHE (per-device)
+// ══════════════════════════════════════════════
+function saveDailySong(dateKey, songData) {
+  try {
+    const cache = JSON.parse(localStorage.getItem(DAILY_CACHE) || '{}');
+    // Trim to last 60 days to avoid bloat
+    const keys = Object.keys(cache).sort();
+    while (keys.length >= 60) { delete cache[keys.shift()]; }
+    cache[dateKey] = songData;
+    localStorage.setItem(DAILY_CACHE, JSON.stringify(cache));
+  } catch(e) {}
+}
+function loadCachedSong(dateKey) {
+  try {
+    const cache = JSON.parse(localStorage.getItem(DAILY_CACHE) || '{}');
+    return cache[dateKey] || null;
+  } catch { return null; }
+}
+
+// ══════════════════════════════════════════════
+//  AUTOCOMPLETE / SONG LIST
+// ══════════════════════════════════════════════
+async function ensureAcCache() {
+  if (acCache !== null || acLoading) return;
+  acLoading = true;
+  try {
+    const r = await fetch('./songs.json');
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const data = await r.json();
+    acCache = Array.isArray(data) ? data : [];
+  } catch(e) {
+    acCache = [];
+    console.warn('[JuiceWRLDLE] songs.json unavailable:', e.message);
+  } finally { acLoading = false; }
+}
+
+// ══════════════════════════════════════════════
+//  DAILY SONG FETCHING
+//  Strategy: pick target song name from songs.json
+//  by deterministic index, then get full data from API.
+// ══════════════════════════════════════════════
+function normalize(s) {
+  return String(s).toLowerCase()
+    .replace(/[''`]/g,"'").replace(/[""]/g,'"')
+    .replace(/\s+/g,' ').trim();
+}
+function stripVersion(s) {
+  return s.replace(/\s*\(v\d+[^)]*\)\s*$/i,'').replace(/\s*\[v\d+[^)]*\]\s*$/i,'').trim();
+}
+
+async function getDailySong(dateKey) {
+  // 1. Check device cache first
+  const cached = loadCachedSong(dateKey);
+  if (cached && cached.path) return cached;
+
+  // 2. Load songs list to get deterministic target
+  await ensureAcCache();
+  if (!acCache || acCache.length === 0) throw new Error('Song list unavailable');
+
+  const dayIdx = getDayIndex(dateKey);
+  const idx = ((dayIdx % acCache.length) + acCache.length) % acCache.length;
+  const target = acCache[idx];
+  const targetNorm = normalize(target.name);
+
+  // 3. Try /songs/?search=name endpoint (DRF search)
+  try {
+    const searchUrl = `${API_BASE}/songs/?search=${encodeURIComponent(target.name)}&format=json`;
+    const r = await fetch(searchUrl);
+    if (r.ok) {
+      const data = await r.json();
+      const results = Array.isArray(data) ? data : (data.results || []);
+      const match = results.find(s => {
+        const n = normalize((s.song && s.song.name) || s.name || s.title || '');
+        return n === targetNorm || normalize(stripVersion(n)) === normalize(stripVersion(target.name));
+      });
+      if (match && match.path) {
+        saveDailySong(dateKey, match);
+        return match;
+      }
+    }
+  } catch(e) {}
+
+  // 4. Fallback: fetch random songs, collect any that match
+  //    Also return the first valid song found (worst-case fallback)
+  let anyValid = null;
+  for (let i = 0; i < 25; i++) {
+    try {
+      const r = await fetch(`${API_BASE}/radio/random/`);
+      if (!r.ok) continue;
+      const result = await r.json();
+      if (!result || !result.path) continue;
+      if (!anyValid) anyValid = result;
+      const songName = (result.song && result.song.name) || result.title || '';
+      if (normalize(songName) === targetNorm) {
+        saveDailySong(dateKey, result);
+        return result;
+      }
+    } catch(e) {}
+    await new Promise(res => setTimeout(res, 150));
+  }
+
+  // 5. Last resort: use whatever random song we got
+  //    (same device gets same song all day via cache)
+  if (anyValid) {
+    saveDailySong(dateKey, anyValid);
+    return anyValid;
+  }
+
+  throw new Error('Could not load daily song');
+}
 
 // ══════════════════════════════════════════════
 //  STATS
@@ -556,62 +758,40 @@ function getStats()   { try { return JSON.parse(localStorage.getItem(STATS_KEY)|
 function saveStats(s) { localStorage.setItem(STATS_KEY, JSON.stringify(s)); }
 function winRate()    { const s=getStats(); return s.played ? Math.round((s.wins/s.played)*100) : 0; }
 function recordResult(won, guessNum) {
-  const s  = getStats();
-  s.played = (s.played||0)+1;
-  s.wins   = (s.wins||0)+(won?1:0);
-  s.streak = won ? (s.streak||0)+1 : 0;
-  s.best   = Math.max(s.best||0, s.streak);
-  const d  = s.dist||{};
-  const k  = won ? String(guessNum) : 'X';
-  d[k]     = (d[k]||0)+1;
-  s.dist   = d;
+  if (isHistoryMode) return; // history replays never affect stats
+  const s   = getStats();
+  s.played  = (s.played||0) + 1;
+  s.wins    = (s.wins||0) + (won ? 1 : 0);
+  s.streak  = won ? (s.streak||0)+1 : 0;
+  s.best    = Math.max(s.best||0, s.streak);
+  const d   = s.dist||{};
+  const k   = won ? String(guessNum) : 'X';
+  d[k]      = (d[k]||0) + 1;
+  s.dist    = d;
   saveStats(s);
 }
 
 // ══════════════════════════════════════════════
-//  DIFFICULTY
+//  CLIP TIMING
 // ══════════════════════════════════════════════
-function getClipBase()     { return DIFF[difficulty].clipBase; }
-function getClipStep()     { return DIFF[difficulty].clipStep; }
-function getMaxPlays()     { return DIFF[difficulty].maxPlays; }
-function getClipSec(gIdx)  { return getClipBase() + gIdx * getClipStep(); }
-function getMaxClipSec()   { return getClipBase() + (MAX_GUESSES-1) * getClipStep(); }
+function getClipSec(gIdx)  { return CLIP_BASE + Math.min(gIdx, MAX_GUESSES-1) * CLIP_STEP; }
+function getMaxClipSec()   { return CLIP_BASE + (MAX_GUESSES-1) * CLIP_STEP; }
 
-// ══════════════════════════════════════════════
-//  FILTERS
-// ══════════════════════════════════════════════
-function songMatchesFilters(r) {
-  const s = r.song || {};
-  if (filters.categories.size > 0) {
-    const cats = (s.category||'').split('/');
-    const anyMode = filters.mode !== 'all';
-    const match = anyMode
-      ? [...filters.categories].some(c=>cats.includes(c))
-      : [...filters.categories].every(c=>cats.includes(c));
-    if (!match) return false;
-  }
-  if (filters.eras.size > 0) {
-    const era = (s.era && s.era.name) || s.era || '';
-    if (!filters.eras.has(era)) return false;
-  }
-  return true;
+function parseDuration(str) {
+  if (!str) return 180;
+  const p = String(str).split(':').map(Number);
+  if (p.length===2) return p[0]*60+p[1];
+  if (p.length===3) return p[0]*3600+p[1]*60+p[2];
+  return 180;
 }
-function loadFilters() {
-  try {
-    const f = JSON.parse(localStorage.getItem(FILTER_KEY)||'{}');
-    if (Array.isArray(f.categories)) filters.categories = new Set(f.categories);
-    if (Array.isArray(f.eras))       filters.eras        = new Set(f.eras);
-    if (f.mode) filters.mode = f.mode;
-  } catch {}
-}
-function saveFilters() {
-  localStorage.setItem(FILTER_KEY, JSON.stringify({
-    categories: [...filters.categories], eras: [...filters.eras], mode: filters.mode,
-  }));
-}
-function buildEraList() {
-  if (!acCache) return [];
-  return [...new Set(acCache.map(s=>s.era).filter(Boolean))].sort();
+function pickDailyStart(songData, dayIdx) {
+  const dur  = parseDuration(songData.song && songData.song.length);
+  const max  = getMaxClipSec();
+  const safe = Math.max(0, dur - max - 5);
+  if (safe <= 0) return 0;
+  // Deterministic per day so all users hear the same segment
+  const t = ((dayIdx * 1234567 + 89) % 97) / 97;
+  return Math.floor(t * safe);
 }
 
 // ══════════════════════════════════════════════
@@ -638,7 +818,7 @@ function syncVolUI() {
   if (pct)    pct.textContent = muted ? '0%' : Math.round(volume * 100) + '%';
   if (slider) {
     slider.value = muted ? 0 : volume;
-    const fill = (muted ? 0 : volume) * 100;
+    const fill   = (muted ? 0 : volume) * 100;
     slider.style.backgroundSize = fill + '% 100%';
   }
 }
@@ -646,33 +826,23 @@ function syncVolUI() {
 // ══════════════════════════════════════════════
 //  AUDIO
 // ══════════════════════════════════════════════
-function parseDuration(str) {
-  if (!str) return 180;
-  const p = String(str).split(':').map(Number);
-  if (p.length===2) return p[0]*60+p[1];
-  if (p.length===3) return p[0]*3600+p[1]*60+p[2];
-  return 180;
-}
-function pickRandomStart(songData) {
-  const dur  = parseDuration(songData.song && songData.song.length);
-  const max  = getMaxClipSec();
-  const safe = Math.max(0, dur - max - 5);
-  return safe > 0 ? Math.random() * safe : 0;
-}
 function stopAudio() {
   if (audio) audio.pause();
   if (waveAnimId) { cancelAnimationFrame(waveAnimId); waveAnimId = null; }
 }
+
 function playClip() {
   if (!song || !state || state.done) return;
+  if (state.playCount >= MAX_PLAYS) {
+    toast('1 play per turn — make your guess or skip!');
+    return;
+  }
   const gIdx    = state.guesses.length;
   const clipSec = getClipSec(gIdx);
   const start   = state.startSec || 0;
-  if (state.playCount >= getMaxPlays()) {
-    toast('No plays left for this guess!');
-    return;
-  }
+
   stopAudio();
+
   if (!audio) {
     audio = new Audio();
     audio.volume = effectiveVolume();
@@ -685,10 +855,12 @@ function playClip() {
       }
     });
   }
+
   audio.currentTime = start;
   audio.play()
     .then(() => {
-      state.playCount++; // only charge a play if audio actually started
+      state.playCount++;
+      saveGameState(currentDate, state);
       render();
       setPlayBtnState(true);
       const tick = () => {
@@ -712,8 +884,10 @@ function playClip() {
         document.getElementById('blockerBanner').classList.remove('hidden');
       }
     });
+
   audio.addEventListener('ended', () => setPlayBtnState(false), {once:true});
 }
+
 function setPlayBtnState(playing) {
   const btn = document.getElementById('playBtn');
   if (!btn) return;
@@ -724,18 +898,15 @@ function setPlayBtnState(playing) {
 }
 
 // ══════════════════════════════════════════════
-//  WAVEFORM — robust canvas sizing
+//  WAVEFORM
 // ══════════════════════════════════════════════
 function initWave(canvas) {
   if (!canvas) return;
   const tryInit = (attempts) => {
     const W = canvas.offsetWidth;
     const H = canvas.offsetHeight || 52;
-    if (W === 0 && attempts > 0) {
-      setTimeout(() => tryInit(attempts - 1), 30);
-      return;
-    }
-    const actualW = W || 400; // fallback width
+    if (W === 0 && attempts > 0) { setTimeout(() => tryInit(attempts-1), 30); return; }
+    const actualW = W || 400;
     const dpr = window.devicePixelRatio || 1;
     canvas.width  = actualW * dpr;
     canvas.height = H * dpr;
@@ -747,7 +918,6 @@ function initWave(canvas) {
     waveData = { bars, gap, bw, W: actualW, H };
     drawWave(0);
   };
-  // Double rAF to ensure layout has settled
   requestAnimationFrame(() => requestAnimationFrame(() => tryInit(5)));
 }
 function drawWave(progress) {
@@ -770,56 +940,8 @@ function drawWave(progress) {
 }
 
 // ══════════════════════════════════════════════
-//  FETCH SONG
+//  AUTOCOMPLETE UI
 // ══════════════════════════════════════════════
-async function fetchFilteredSong(maxRetries = 30) {
-  let lastErr = null;
-  for (let i = 0; i < maxRetries; i++) {
-    try {
-      const r = await fetch(API_BASE + '/radio/random/');
-      if (!r.ok) throw new Error('HTTP ' + r.status);
-      const result = await r.json();
-      if (!result || !result.path) continue;
-      if (!songMatchesFilters(result)) continue;
-      return result;
-    } catch(e) {
-      lastErr = e;
-      // Likely ad blocker on first fail
-      if (i === 0 && e.message === 'Failed to fetch') {
-        audioBlocked = true;
-        document.getElementById('blockerBanner').classList.remove('hidden');
-      }
-      await new Promise(r => setTimeout(r, 300));
-    }
-  }
-  throw lastErr || new Error('No song found');
-}
-
-// ══════════════════════════════════════════════
-//  AUTOCOMPLETE
-// ══════════════════════════════════════════════
-async function ensureAcCache() {
-  if (acCache !== null || acLoading) return;
-  acLoading = true;
-  try {
-    const r = await fetch('./songs.json');
-    if (!r.ok) throw new Error('HTTP ' + r.status);
-    const data = await r.json();
-    acCache = Array.isArray(data) ? data : [];
-    renderFilterPanel();
-  } catch(e) {
-    acCache = [];
-    console.warn('[JuiceWRLDLE] songs.json unavailable:', e.message);
-  } finally { acLoading = false; }
-}
-function normalize(s) {
-  return String(s).toLowerCase()
-    .replace(/[''`]/g,"'").replace(/[""]/g,'"')
-    .replace(/\s+/g,' ').trim();
-}
-function stripVersion(s) {
-  return s.replace(/\s*\(v\d+[^)]*\)\s*$/i,'').replace(/\s*\[v\d+[^)]*\]\s*$/i,'').trim();
-}
 function acSearch(q) {
   if (!acCache || !q) return [];
   const ql = q.toLowerCase().trim();
@@ -843,7 +965,7 @@ function renderAc(items) {
   list.innerHTML = items.map(s => {
     const sub = (s.titles||[]).slice(0,2).join(', ');
     return `<div class="ac-item" data-name="${esc(s.name)}" onclick="pickAc(this)">
-      ${esc(s.name)}${sub?`<div class="ac-sub">${esc(sub)}</div>`:''}
+      ${esc(s.name)}${sub ? `<div class="ac-sub">${esc(sub)}</div>` : ''}
     </div>`;
   }).join('');
 }
@@ -888,7 +1010,7 @@ function checkGuess(input, songData) {
 }
 function getClueValue(key, songData) {
   const name = ((songData.song && songData.song.name) || songData.title || '').trim();
-  const s = songData.song || {};
+  const s    = songData.song || {};
   switch (key) {
     case 'era':      return (s.era && s.era.name) || s.era || '';
     case 'length':   return s.length || '';
@@ -901,6 +1023,26 @@ function getClueValue(key, songData) {
 }
 
 // ══════════════════════════════════════════════
+//  HINT SYSTEM
+// ══════════════════════════════════════════════
+function revealNextHint() {
+  if (!state) return;
+  const available = (state.hintsUnlocked||0) - (state.hintsRevealed||[]).length;
+  if (available <= 0) {
+    toast('No hints yet — make a guess first!');
+    return;
+  }
+  // Find the next unrevealed clue in sequence
+  const next = CLUE_KEYS.find(k => !(state.hintsRevealed||[]).includes(k));
+  if (!next) { toast('All hints already revealed!'); return; }
+  state.hintsRevealed = [...(state.hintsRevealed||[]), next];
+  const val = song ? getClueValue(next, song) : '?';
+  toast(`💡 ${CLUE_LABELS[next]}: ${val || '?'}`);
+  saveGameState(currentDate, state);
+  render();
+}
+
+// ══════════════════════════════════════════════
 //  RENDER
 // ══════════════════════════════════════════════
 function render() {
@@ -908,14 +1050,16 @@ function render() {
   const main     = document.getElementById('main');
   const gIdx     = state.guesses.length;
   const clipSec  = getClipSec(gIdx);
-  const maxCSec  = getMaxClipSec();
-  const playsLeft = Math.max(0, getMaxPlays() - state.playCount);
   const isDone   = state.done;
-  const noClues  = DIFF[difficulty].noClues;
-  const revealed = new Set(state.cluesRevealed || []);
   const imgSrc   = (song.song && song.song.image_url) ? IMG_BASE + song.song.image_url : null;
+  const todayKey = getTodayKey();
+  const playUsed = state.playCount >= MAX_PLAYS;
 
-  // Slots
+  const hintsUnlocked = state.hintsUnlocked || 0;
+  const hintsRevealed = state.hintsRevealed || [];
+  const hintsLeft     = hintsUnlocked - hintsRevealed.length;
+
+  // Guess slots
   const slots = Array.from({length: MAX_GUESSES}, (_,i) => {
     const g = state.guesses[i];
     let cls='', icon='';
@@ -924,82 +1068,96 @@ function render() {
     return `<div class="g-slot ${cls}">${icon}</div>`;
   }).join('');
 
-  // History
+  // Guess history
   const hist = state.guesses.map((g,i) => {
     if (g.skipped) return `<div class="g-row skipped"><div class="g-badge">${i+1}</div><span>Skipped</span></div>`;
     return `<div class="g-row ${g.correct?'correct':'wrong'}">
-      <div class="g-badge">${i+1}</div><span>${esc(g.text)}</span></div>`;
+      <div class="g-badge">${i+1}</div><span>${esc(g.text)}</span>
+    </div>`;
   }).join('');
 
-  // Clues — era always revealed upfront (unless hard mode and not done)
+  // Clues
   const cluesHtml = CLUE_KEYS.map(key => {
-    const isEra     = key === 'era';
-    const isRevealed = revealed.has(key) || isDone;
-    // In hard mode, nothing shown until done; in normal/easy, era is shown from start
-    const showVal   = isRevealed && (!noClues || isDone);
-    const val       = showVal ? getClueValue(key, song) : '';
-    const extraCls  = isEra && showVal && !isDone ? 'era-upfront' : '';
-    return `<div class="clue-card ${showVal?'revealed':''} ${extraCls}">
+    const revealed = hintsRevealed.includes(key) || isDone;
+    const val      = revealed ? getClueValue(key, song) : '';
+    return `<div class="clue-card ${revealed ? 'revealed' : ''}">
       <div class="clue-lbl">${CLUE_LABELS[key]}</div>
       ${val ? `<div class="clue-val">${esc(val)}</div>` : '<div class="clue-dash"></div>'}
     </div>`;
   }).join('');
 
-  // Volume slider HTML
+  // Volume
   const volFill = (muted ? 0 : volume) * 100;
   const volHtml = `
     <div class="vol-row">
       <button class="vol-icon" id="volMuteBtn" onclick="toggleMute()">${muted?'🔇':volume<0.5?'🔉':'🔊'}</button>
-      <input type="range" class="vol-slider" id="volSlider"
-        min="0" max="1" step="0.02" value="${muted?0:volume}"
-        style="background-size:${volFill}% 100%"
+      <input type="range" class="vol-slider" id="volSlider" min="0" max="1" step="0.02"
+        value="${muted?0:volume}" style="background-size:${volFill}% 100%"
         oninput="setVolume(this.value)">
       <span class="vol-pct" id="volPct">${muted?'0%':Math.round(volume*100)+'%'}</span>
     </div>`;
 
-  // Result
+  // Result card
   let resultHtml = '';
   if (isDone) {
     const songName = (song.song && song.song.name) || song.title || '?';
-    const era = getClueValue('era', song), length = getClueValue('length', song);
-    const prod = getClueValue('producer', song), relDate = (song.song && song.song.release_date) || '';
+    const era      = getClueValue('era', song);
+    const length   = getClueValue('length', song);
+    const prod     = getClueValue('producer', song);
+    const relDate  = (song.song && song.song.release_date) || '';
+    const guessCount = state.guesses.filter(g => !g.skipped && g.correct).length
+                    || state.guesses.filter(g => !g.skipped).length;
+
     resultHtml = `
       <div class="card result-card">
         <div class="result-emoji">${state.won?'🎉':'💀'}</div>
-        <div class="result-headline ${state.won?'won':'lost'}">${state.won?`Correct! (Guess #${state.guesses.filter(g=>!g.skipped).length})`:'The song was…'}</div>
+        ${isHistoryMode ? `<div class="history-badge">📅 ${formatDate(currentDate)}</div>` : ''}
+        <div class="result-headline ${state.won?'won':'lost'}">
+          ${state.won ? `Correct in ${guessCount} guess${guessCount!==1?'es':''}!` : 'The song was…'}
+        </div>
         <div class="result-song">${esc(songName)}</div>
-        ${imgSrc?`<img class="result-cover" src="${esc(imgSrc)}" onerror="this.style.display='none'" alt="${esc(songName)}">`:''}
+        ${imgSrc ? `<img class="result-cover" src="${esc(imgSrc)}" onerror="this.style.display='none'" alt="${esc(songName)}">` : ''}
         <div class="result-meta">
-          ${era?`<div class="meta-item"><label>Era</label><span>${esc(era)}</span></div>`:''}
-          ${length?`<div class="meta-item"><label>Length</label><span>${esc(length)}</span></div>`:''}
-          ${prod?`<div class="meta-item"><label>Producer</label><span>${esc(prod)}</span></div>`:''}
-          ${relDate?`<div class="meta-item"><label>Released</label><span>${esc(relDate)}</span></div>`:''}
+          ${era     ? `<div class="meta-item"><label>Era</label><span>${esc(era)}</span></div>` : ''}
+          ${length  ? `<div class="meta-item"><label>Length</label><span>${esc(length)}</span></div>` : ''}
+          ${prod    ? `<div class="meta-item"><label>Producer</label><span>${esc(prod)}</span></div>` : ''}
+          ${relDate ? `<div class="meta-item"><label>Released</label><span>${esc(relDate)}</span></div>` : ''}
         </div>
         <div class="result-actions">
-          <button class="btn btn-primary" style="flex:1" onclick="shareResult()">📋 Share</button>
-          <button class="btn btn-ghost"   style="flex:1" onclick="loadRound()">▶ Next</button>
+          <button class="btn btn-primary" onclick="shareResult()">📋 Share</button>
+          ${isHistoryMode
+            ? `<button class="btn btn-ghost" style="flex:1" onclick="playDay('${todayKey}')">← Today</button>`
+            : `<div class="next-game-wrap">🎵 New song tomorrow!</div>`
+          }
         </div>
       </div>`;
   }
 
+  // Input
   const inputHtml = isDone ? '' : `
     <div class="card">
       <div class="input-wrap">
-        <input id="guessInput" class="guess-input" type="text" placeholder="Type a Juice WRLD song…" autocomplete="off" spellcheck="false">
+        <input id="guessInput" class="guess-input" type="text"
+          placeholder="Type a Juice WRLD song…" autocomplete="off" spellcheck="false">
         <div id="acList" class="ac-list hidden"></div>
       </div>
       <div class="action-row">
         <button class="btn btn-primary" onclick="doGuess()">Guess</button>
         <button class="btn btn-ghost"   onclick="askSkip()">Skip ›</button>
-        <button class="btn btn-ghost"   onclick="askGiveUp()" title="Give up and see the answer">Give Up</button>
+        <button class="btn btn-ghost"   onclick="askGiveUp()">Give Up</button>
       </div>
     </div>`;
 
   main.innerHTML = `
+    ${isHistoryMode && !isDone ? `
+      <div class="history-banner">
+        📅 Playing: <strong>${formatDate(currentDate)}</strong>
+        <button class="link-btn" onclick="playDay('${todayKey}')">← Back to today</button>
+      </div>` : ''}
     <div class="card">
       <div class="guess-slots">${slots}</div>
       <div class="player-top">
-        <button class="play-btn" id="playBtn" onclick="playClip()">
+        <button class="play-btn${playUsed && !isDone ? ' used' : ''}" id="playBtn" onclick="playClip()">
           <svg viewBox="0 0 24 24"><polygon points="6,3 20,12 6,21"/></svg>
         </button>
         <div class="waveform-wrap">
@@ -1008,136 +1166,132 @@ function render() {
       </div>
       <div class="player-meta">
         <span class="clip-label">${clipSec}s clip</span>
-        <span class="plays-pill">▶ ${playsLeft} play${playsLeft!==1?'s':''} left</span>
-        <span>${isDone ? maxCSec+'s max' : `${gIdx+1}/${MAX_GUESSES}`}</span>
+        <span class="plays-pill ${playUsed && !isDone ? 'used' : ''}">
+          ${isDone ? '—' : playUsed ? '✓ played' : '▶ 1 play'}
+        </span>
+        <span>${isDone ? '' : `Guess ${gIdx+1} of ${MAX_GUESSES}`}</span>
       </div>
       ${volHtml}
-      ${hist?`<div class="guess-history mt-8">${hist}</div>`:''}
+      ${hist ? `<div class="guess-history mt-8">${hist}</div>` : ''}
     </div>
     ${resultHtml}
     ${inputHtml}
-    ${(!noClues||isDone)?`
     <div class="card">
-      <div class="sec-lbl">Clues ${!noClues&&!isDone?'<span style="font-size:.65rem;color:var(--text3);font-weight:400;text-transform:none;letter-spacing:0">(Era shown free — more unlock with each wrong guess)</span>':''}</div>
-      <div class="clues-grid">${cluesHtml}</div>
-    </div>`:''}
-    <div class="card">
-      <div class="sec-lbl">Difficulty</div>
-      <div class="diff-tabs">
-        ${['easy','normal','hard'].map(d=>`
-          <button class="diff-tab${difficulty===d?' active':''}" onclick="setDiff('${d}')">
-            ${d[0].toUpperCase()+d.slice(1)}
-          </button>`).join('')}
+      <div class="clues-header">
+        <span class="sec-lbl">Clues</span>
+        ${!isDone ? `
+          <button class="hint-btn ${hintsLeft <= 0 ? 'no-hints' : ''}" onclick="revealNextHint()">
+            💡 Reveal Hint${hintsLeft > 0 ? ` (${hintsLeft})` : ''}
+          </button>` : ''}
       </div>
+      <div class="clues-grid">${cluesHtml}</div>
+      ${!isDone && hintsUnlocked === 0 ? `
+        <p style="font-size:.72rem;color:var(--text3);margin-top:8px;text-align:center">
+          Make a guess to unlock your first hint
+        </p>` : ''}
     </div>`;
 
-  // Init waveform canvas
   const cv = document.getElementById('waveCanvas');
   if (cv) initWave(cv);
   wireInput();
 }
 
 // ══════════════════════════════════════════════
-//  ACTIONS
+//  GAME ACTIONS
 // ══════════════════════════════════════════════
-function setDiff(d) {
-  if (difficulty === d) return;
-  difficulty = d;
-  localStorage.setItem(DIFF_KEY, d);
-  toast(`${d[0].toUpperCase()+d.slice(1)} mode — takes effect next round`);
-  render();
-}
-
 function doGuess() {
   const inp = document.getElementById('guessInput');
   if (!inp || !song || !state || state.done) return;
   const val = inp.value.trim();
   if (!val) { toast('Type a song name first!'); return; }
   hideAc();
+
   const correct  = checkGuess(val, song);
   const guessNum = state.guesses.length + 1;
-  state.guesses.push({ text:val, correct, skipped:false });
-  state.playCount = 0; // reset plays for the next guess
+  state.guesses.push({ text: val, correct, skipped: false });
+  state.playCount   = 0;
+  state.hintsUnlocked = (state.hintsUnlocked||0) + 1;
 
   if (correct) {
-    state.done = true; state.won = true;
-    state.cluesRevealed = [...CLUE_KEYS];
+    state.done = true;
+    state.won  = true;
     recordResult(true, guessNum);
     toast('🎉 Correct!');
   } else if (state.guesses.length >= MAX_GUESSES) {
-    state.done = true; state.won = false;
-    state.cluesRevealed = [...CLUE_KEYS];
+    state.done = true;
+    state.won  = false;
     recordResult(false, 0);
-    toast('💀 Better luck next time!');
+    toast('💀 Better luck tomorrow!');
   } else {
-    // Reveal next clue from the post-era sequence
-    const nextKey = CLUE_REVEAL_SEQ[state.guesses.length - 1];
-    if (nextKey && !DIFF[difficulty].noClues) {
-      state.cluesRevealed = [...(state.cluesRevealed||[]), nextKey];
-      const v = getClueValue(nextKey, song);
-      if (v) toast(`Clue: ${CLUE_LABELS[nextKey]} → ${v}`);
-    } else {
-      toast('Wrong! Try again.');
-    }
+    toast('Wrong! A hint is now unlocked — or keep guessing.');
   }
+
+  saveGameState(currentDate, state);
+  render();
+}
+
+function doSkip() {
+  if (!state || state.done) return;
+  state.guesses.push({ text:'', correct:false, skipped:true });
+  state.playCount     = 0;
+  state.hintsUnlocked = (state.hintsUnlocked||0) + 1;
+
+  if (state.guesses.length >= MAX_GUESSES) {
+    state.done = true;
+    state.won  = false;
+    recordResult(false, 0);
+  }
+
+  saveGameState(currentDate, state);
   render();
 }
 
 function doGiveUp() {
   if (!state || state.done) return;
-  state.done = true; state.won = false;
-  state.cluesRevealed = [...CLUE_KEYS];
+  state.done         = true;
+  state.won          = false;
+  state.hintsRevealed = [...CLUE_KEYS]; // reveal everything
   recordResult(false, 0);
+  saveGameState(currentDate, state);
   render();
 }
 
 function askSkip() {
   if (!state || state.done) return;
   document.getElementById('confirmBg').classList.remove('hidden');
-  document.getElementById('confirmMsg').textContent = 'Skip a turn?';
-  document.getElementById('confirmOk').textContent = 'Skip';
+  document.getElementById('confirmMsg').textContent = 'Skip this turn?';
+  document.getElementById('confirmOk').textContent  = 'Skip';
   document.getElementById('confirmOk').onclick = () => { closeConfirm(); doSkip(); };
 }
 function askGiveUp() {
   if (!state || state.done) return;
   document.getElementById('confirmBg').classList.remove('hidden');
   document.getElementById('confirmMsg').textContent = 'Give up and reveal the answer?';
-  document.getElementById('confirmOk').textContent = 'Give Up';
+  document.getElementById('confirmOk').textContent  = 'Give Up';
   document.getElementById('confirmOk').onclick = () => { closeConfirm(); doGiveUp(); };
 }
 function closeConfirm() { document.getElementById('confirmBg').classList.add('hidden'); }
-
-function doSkip() {
-  if (!state || state.done) return;
-  state.guesses.push({ text:'', correct:false, skipped:true });
-  state.playCount = 0;
-  if (state.guesses.length >= MAX_GUESSES) {
-    state.done = true; state.won = false;
-    state.cluesRevealed = [...CLUE_KEYS];
-    recordResult(false, 0);
-  } else {
-    const nextKey = CLUE_REVEAL_SEQ[state.guesses.length - 1];
-    if (nextKey && !DIFF[difficulty].noClues)
-      state.cluesRevealed = [...(state.cluesRevealed||[]), nextKey];
-  }
-  render();
-}
 
 // ══════════════════════════════════════════════
 //  SHARE
 // ══════════════════════════════════════════════
 function shareResult() {
   if (!state || !song) return;
-  const name = (song.song && song.song.name) || song.title || '?';
-  const icons = Array.from({length:MAX_GUESSES}, (_,i) => {
+  const name  = (song.song && song.song.name) || song.title || '?';
+  const icons = Array.from({length: MAX_GUESSES}, (_,i) => {
     const g = state.guesses[i];
     if (!g) return '⬜';
     return g.correct ? '🟣' : g.skipped ? '⬛' : '🔴';
   });
-  const text = `JuiceWRLDLE\n${icons.join('')} ${state.won?'✓':'✗'}\n${state.won?'🎉':'💀'} ${name}\njuicewrldle.cc`;
+  const text = [
+    `JuiceWRLDLE — ${formatDateShort(currentDate)}`,
+    `${icons.join('')} ${state.won ? '✓' : '✗'}`,
+    `${state.won ? '🎉' : '💀'} ${name}`,
+    'juicewrldle.cc',
+  ].join('\n');
   navigator.clipboard.writeText(text)
-    .then(()=>toast('Copied to clipboard!'))
-    .catch(()=>toast('Unable to copy — try manually'));
+    .then(() => toast('Copied to clipboard!'))
+    .catch(() => toast('Unable to copy — try manually'));
 }
 
 // ══════════════════════════════════════════════
@@ -1147,12 +1301,12 @@ function openStats() {
   const s   = getStats();
   const d   = s.dist || {};
   const max = Math.max(1, ...Object.values(d).map(Number));
-  const distRows = Array.from({length:MAX_GUESSES}, (_,i) => {
+  const distRows = Array.from({length: MAX_GUESSES}, (_,i) => {
     const k = String(i+1), v = d[k]||0, w = Math.max(Math.round((v/max)*100), v?6:0);
     return `<div class="dist-row"><div class="dist-n">${i+1}</div><div class="dist-bar-wrap">
       <div class="dist-bar" style="width:${w}%">${v||''}</div></div></div>`;
   }).join('') + (() => {
-    const v=d['X']||0, w=Math.max(Math.round((v/max)*100),v?6:0);
+    const v = d['X']||0, w = Math.max(Math.round((v/max)*100), v?6:0);
     return `<div class="dist-row"><div class="dist-n">✗</div><div class="dist-bar-wrap">
       <div class="dist-bar loss" style="width:${w}%">${v||''}</div></div></div>`;
   })();
@@ -1172,80 +1326,162 @@ function shareStats() {
   const s = getStats();
   navigator.clipboard.writeText(
     `JuiceWRLDLE Stats 🎵\nPlayed: ${s.played||0} | Win: ${winRate()}%\nStreak: ${s.streak||0} 🔥 Best: ${s.best||0}\njuicewrldle.cc`
-  ).then(()=>toast('Stats copied!')).catch(()=>{});
+  ).then(() => toast('Stats copied!')).catch(() => {});
 }
 
 // ══════════════════════════════════════════════
-//  FILTERS MODAL
+//  HISTORY MODAL
 // ══════════════════════════════════════════════
-function openFilters() { renderFilterPanel(); openModal('filterModal'); }
-function renderFilterPanel() {
-  const el = document.getElementById('filterContent');
+function openHistory() {
+  renderHistoryModal();
+  openModal('historyModal');
+}
+function renderHistoryModal() {
+  const el = document.getElementById('historyContent');
   if (!el) return;
-  const cats = ['released','unreleased','recording_session','unsurfaced'];
-  const eras = buildEraList();
-  el.innerHTML = `
-    <div class="sec-lbl">Category</div>
-    <div class="filter-row">${cats.map(c=>`
-      <button class="f-chip${filters.categories.has(c)?' on':''}" onclick="toggleCat('${c}')">
-        ${c.replace(/_/g,' ')}</button>`).join('')}</div>
-    <div style="display:flex;gap:6px;margin-bottom:12px;">
-      <button class="f-chip${filters.mode==='any'?' on':''}" onclick="setFilterMode('any')">Match Any</button>
-      <button class="f-chip${filters.mode==='all'?' on':''}" onclick="setFilterMode('all')">Match All</button>
-    </div>
-    <div class="sec-lbl">Era</div>
-    <div class="filter-row">${eras.length
-      ? eras.map(e=>`<button class="f-chip${filters.eras.has(e)?' on':''}" onclick="toggleEra('${esc(e)}')">${esc(e)}</button>`).join('')
-      : '<span style="color:var(--text2);font-size:.8rem">Play a round first to see eras</span>'
-    }</div>
-    <div class="divider"></div>
-    <button class="btn btn-ghost btn-full" onclick="clearFilters()">Clear All Filters</button>
-    <p style="font-size:.73rem;color:var(--text2);margin-top:10px;text-align:center">Filters apply from the next round</p>`;
+
+  const todayKey = getTodayKey();
+  const allHistory = getAllHistory();
+
+  // Build list of all days from GAME_EPOCH → today (newest first)
+  const startDate = new Date(GAME_EPOCH);
+  startDate.setHours(0,0,0,0);
+  const endDate = new Date();
+  endDate.setHours(0,0,0,0);
+
+  // Group by year-month (newest month first)
+  const monthMap = {};
+  const d = new Date(endDate);
+  while (d >= startDate) {
+    const yy  = d.getFullYear();
+    const mm  = d.getMonth();
+    const dd  = d.getDate();
+    const key = `${yy}-${String(mm+1).padStart(2,'0')}-${String(dd).padStart(2,'0')}`;
+    const mk  = `${yy}-${String(mm+1).padStart(2,'0')}`;
+
+    if (!monthMap[mk]) {
+      const lbl = new Date(yy, mm, 1).toLocaleDateString('en-US', {month:'long', year:'numeric'});
+      monthMap[mk] = { label: lbl, days: [] };
+    }
+
+    const gs = allHistory[key];
+    let status = 'unplayed', icon = '⬜';
+    if (key === todayKey) {
+      if (gs && gs.done) { status = gs.won ? 'won' : 'lost'; icon = gs.won ? '🟣' : '🔴'; }
+      else { status = 'today'; icon = '🎵'; }
+    } else if (gs && gs.done) {
+      status = gs.won ? 'won' : 'lost';
+      icon   = gs.won ? '🟣' : '🔴';
+    } else if (gs && !gs.done && gs.guesses && gs.guesses.length > 0) {
+      status = 'partial'; icon = '🟡';
+    }
+
+    monthMap[mk].days.push({ key, icon, status, dd, isToday: key === todayKey });
+    d.setDate(d.getDate() - 1);
+  }
+
+  const monthKeys = Object.keys(monthMap); // newest-first since we iterated newest-first
+
+  if (!monthKeys.length) {
+    el.innerHTML = '<p style="color:var(--text2);text-align:center;padding:20px 0">No history yet!</p>';
+    return;
+  }
+
+  el.innerHTML = monthKeys.map(mk => {
+    const month = monthMap[mk];
+    const daysHtml = month.days.map(day => {
+      const activeCls = currentDate === day.key ? 'active-day' : '';
+      return `<button class="hist-day ${day.status} ${activeCls}"
+        onclick="closeModal('historyModal');playDay('${day.key}')"
+        title="${formatDate(day.key)}">
+        <span class="hist-day-icon">${day.icon}</span>
+        <span class="hist-day-num">${day.dd}</span>
+      </button>`;
+    }).join('');
+    return `<div class="hist-month">
+      <div class="hist-month-lbl">${month.label}</div>
+      <div class="hist-days-grid">${daysHtml}</div>
+    </div>`;
+  }).join('');
 }
-function toggleCat(c) { filters.categories.has(c)?filters.categories.delete(c):filters.categories.add(c); saveFilters(); renderFilterPanel(); }
-function toggleEra(e) { filters.eras.has(e)?filters.eras.delete(e):filters.eras.add(e); saveFilters(); renderFilterPanel(); }
-function clearFilters() { filters.categories.clear(); filters.eras.clear(); saveFilters(); renderFilterPanel(); toast('Filters cleared'); }
-function setFilterMode(m) { filters.mode = m; saveFilters(); renderFilterPanel(); }
 
 // ══════════════════════════════════════════════
-//  LOAD ROUND
+//  LOAD A DAY
 // ══════════════════════════════════════════════
-async function loadRound() {
+async function playDay(dateKey) {
   stopAudio();
-  roundNum++;
-  song  = null;
-  audio = null; waveCtx = null; waveData = null;
-  // Era shown upfront in normal/easy; hard mode shows nothing
-  const initialClues = DIFF[difficulty].noClues ? [] : ['era'];
-  state = { guesses:[], done:false, won:false, cluesRevealed: initialClues, startSec:null, playCount:0 };
+  song      = null;
+  audio     = null;
+  waveCtx   = null;
+  waveData  = null;
+  currentDate   = dateKey;
+  isHistoryMode = dateKey !== getTodayKey();
+
+  // Update date badge in header
+  const badge = document.getElementById('dateBadge');
+  if (badge) badge.textContent = formatDate(dateKey) + (isHistoryMode ? ' (History)' : '');
 
   document.getElementById('main').innerHTML = `
-    <div class="card"><div class="loading-wrap"><div class="spinner"></div><span>Loading song…</span></div></div>`;
+    <div class="card">
+      <div class="loading-wrap">
+        <div class="spinner"></div>
+        <span>${isHistoryMode ? `Loading ${formatDateShort(dateKey)}…` : "Loading today's song…"}</span>
+      </div>
+    </div>`;
 
+  // Kick off AC cache load in background
   ensureAcCache();
 
   try {
-    song = await fetchFilteredSong();
-    state.startSec = pickRandomStart(song);
+    song = await getDailySong(dateKey);
+    const dayIdx = getDayIndex(dateKey);
+
+    // Restore or init game state
+    const saved = loadGameState(dateKey);
+    if (saved && saved.guesses) {
+      state = saved;
+      // Ensure new state fields exist for older saves
+      if (!state.hintsUnlocked)  state.hintsUnlocked  = 0;
+      if (!state.hintsRevealed)  state.hintsRevealed  = [];
+    } else {
+      state = {
+        guesses:       [],
+        done:          false,
+        won:           false,
+        hintsUnlocked: 0,
+        hintsRevealed: [],
+        startSec:      pickDailyStart(song, dayIdx),
+        playCount:     0,
+      };
+      saveGameState(dateKey, state);
+    }
+
     render();
-    audio = new Audio();
-    audio.preload = 'auto';
-    audio.volume  = effectiveVolume();
-    audio.src = AUDIO_URL(song.path);
-    audio.addEventListener('error', () => {
-      if (!audioBlocked) {
-        audioBlocked = true;
-        document.getElementById('blockerBanner').classList.remove('hidden');
-      }
-    });
-    audio.load();
+
+    // Preload audio (only if game isn't done)
+    if (!state.done) {
+      audio = new Audio();
+      audio.preload = 'auto';
+      audio.volume  = effectiveVolume();
+      audio.src     = AUDIO_URL(song.path);
+      audio.addEventListener('error', () => {
+        if (!audioBlocked) {
+          audioBlocked = true;
+          document.getElementById('blockerBanner').classList.remove('hidden');
+        }
+      });
+      audio.load();
+    }
+
   } catch(e) {
     document.getElementById('main').innerHTML = `
       <div class="card" style="text-align:center;padding:40px 20px;">
         <div style="font-size:2.5rem;margin-bottom:12px">💀</div>
-        <p style="color:var(--text2);font-weight:600;margin-bottom:4px">Couldn't load a song</p>
-        <p style="color:var(--text2);font-size:.82rem;margin-bottom:18px">If audio is being blocked, disable your ad blocker and reload.</p>
-        <button class="btn btn-primary" onclick="loadRound()">Try Again</button>
+        <p style="color:var(--text2);font-weight:600;margin-bottom:4px">Couldn't load the song</p>
+        <p style="color:var(--text2);font-size:.82rem;margin-bottom:18px">
+          Check your connection or ad blocker and try again.
+        </p>
+        <button class="btn btn-primary" onclick="playDay('${dateKey}')">Retry</button>
       </div>`;
   }
 }
@@ -1256,9 +1492,10 @@ async function loadRound() {
 function wireInput() {
   const inp = document.getElementById('guessInput');
   if (!inp) return;
-  inp.addEventListener('input', () => renderAc(inp.value.trim().length>=1 ? acSearch(inp.value.trim()) : []));
+  inp.addEventListener('input', () =>
+    renderAc(inp.value.trim().length >= 1 ? acSearch(inp.value.trim()) : []));
   inp.addEventListener('keydown', e => {
-    if (e.key==='ArrowDown') { e.preventDefault(); moveAcHi(1); }
+    if      (e.key==='ArrowDown') { e.preventDefault(); moveAcHi(1); }
     else if (e.key==='ArrowUp')   { e.preventDefault(); moveAcHi(-1); }
     else if (e.key==='Enter')     { e.preventDefault(); doGuess(); }
     else if (e.key==='Escape')    { hideAc(); }
@@ -1274,6 +1511,7 @@ function wireInput() {
 function openModal(id)  { document.getElementById(id).classList.remove('hidden'); }
 function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
 function showHowTo()    { openModal('howtoModal'); }
+
 document.querySelectorAll('.modal-overlay').forEach(el =>
   el.addEventListener('click', e => { if (e.target===el) el.classList.add('hidden'); })
 );
@@ -1284,12 +1522,12 @@ function esc(s) {
     .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 let toastTimer = null;
-function toast(msg, ms=2600) {
+function toast(msg, ms=2800) {
   const el = document.getElementById('toast');
   el.textContent = msg;
   el.classList.add('show');
   if (toastTimer) clearTimeout(toastTimer);
-  toastTimer = setTimeout(()=>el.classList.remove('show'), ms);
+  toastTimer = setTimeout(() => el.classList.remove('show'), ms);
 }
 
 // ══════════════════════════════════════════════
@@ -1298,7 +1536,7 @@ function toast(msg, ms=2600) {
 function spawnNines() {
   const layer = document.getElementById('ninesLayer');
   for (let i = 0; i < 40; i++) {
-    const el   = document.createElement('span');
+    const el  = document.createElement('span');
     el.className = 'nine';
     el.textContent = '999';
     const size = 7 + Math.random() * 22;
@@ -1320,9 +1558,8 @@ function spawnNines() {
 // ══════════════════════════════════════════════
 //  BOOT
 // ══════════════════════════════════════════════
-loadFilters();
 spawnNines();
-loadRound();
+playDay(getTodayKey());
 </script>
 </body>
 </html>
