@@ -550,7 +550,7 @@
     </div>
   </header>
   <div id="blockerBanner" class="blocker-banner hidden">
-    ⚠️ Audio is being blocked, likely by an ad blocker. Disable it for this site, then reload.
+    ⚠️ Audio failed to load. If you have an ad blocker or privacy extension, try disabling it for this site — otherwise check your connection and <button class="link-btn" style="color:#fca5a5" onclick="location.reload()">reload</button>.
   </div>
   <div id="main"></div>
 </div>
@@ -586,9 +586,9 @@ let state        = null;
 let audio        = null;
 let currentDate  = null;   // 'YYYY-MM-DD'
 let isHistoryMode = false;
-let acCache      = null;
-let acLoading    = false;
-let acHiIdx      = -1;
+let acCache        = null;
+let acCachePromise = null;   // shared promise — prevents race condition on first load
+let acHiIdx        = -1;
 let waveCtx      = null;
 let waveAnimId   = null;
 let waveData     = null;
@@ -663,17 +663,14 @@ function loadCachedSong(dateKey) {
 //  AUTOCOMPLETE / SONG LIST
 // ══════════════════════════════════════════════
 async function ensureAcCache() {
-  if (acCache !== null || acLoading) return;
-  acLoading = true;
-  try {
-    const r = await fetch('./songs.json');
-    if (!r.ok) throw new Error('HTTP ' + r.status);
-    const data = await r.json();
-    acCache = Array.isArray(data) ? data : [];
-  } catch(e) {
-    acCache = [];
-    console.warn('[JuiceWRLDLE] songs.json unavailable:', e.message);
-  } finally { acLoading = false; }
+  if (acCache !== null) return;                   // already loaded
+  if (!acCachePromise) {                          // start loading only once
+    acCachePromise = fetch('./songs.json')
+      .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+      .then(data => { acCache = Array.isArray(data) ? data : []; })
+      .catch(e => { acCache = []; console.warn('[JuiceWRLDLE] songs.json unavailable:', e.message); });
+  }
+  return acCachePromise;                          // all callers await the same promise
 }
 
 // ══════════════════════════════════════════════
@@ -907,7 +904,7 @@ function playClip() {
     })
     .catch(() => {
       setPlayBtnState(false);
-      toast('Audio failed to load — check your ad blocker');
+      toast('Audio failed to load — try refreshing the page');
       if (!audioBlocked) {
         audioBlocked = true;
         document.getElementById('blockerBanner').classList.remove('hidden');
@@ -1439,12 +1436,16 @@ function renderHistoryModal() {
 // ══════════════════════════════════════════════
 async function playDay(dateKey) {
   stopAudio();
-  song      = null;
-  audio     = null;
-  waveCtx   = null;
-  waveData  = null;
-  currentDate   = dateKey;
+  song         = null;
+  audio        = null;
+  waveCtx      = null;
+  waveData     = null;
+  audioBlocked = false;
+  currentDate  = dateKey;
   isHistoryMode = dateKey !== getTodayKey();
+  // Always hide stale error banner at the start of a new load
+  const _bb = document.getElementById('blockerBanner');
+  if (_bb) _bb.classList.add('hidden');
 
   // Update date badge in header
   const badge = document.getElementById('dateBadge');
@@ -1508,7 +1509,7 @@ async function playDay(dateKey) {
         <div style="font-size:2.5rem;margin-bottom:12px">💀</div>
         <p style="color:var(--text2);font-weight:600;margin-bottom:4px">Couldn't load the song</p>
         <p style="color:var(--text2);font-size:.82rem;margin-bottom:18px">
-          Check your connection or ad blocker and try again.
+          Check your connection and try again. If the issue persists, a privacy extension may be blocking the audio API.
         </p>
         <button class="btn btn-primary" onclick="playDay('${dateKey}')">Retry</button>
       </div>`;
