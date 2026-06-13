@@ -550,7 +550,7 @@
     </div>
   </header>
   <div id="blockerBanner" class="blocker-banner hidden">
-    ⚠️ Audio failed to load. If you have an ad blocker or privacy extension, try disabling it for this site — otherwise check your connection and <button class="link-btn" style="color:#fca5a5" onclick="location.reload()">reload</button>.
+    ⚠️ Audio failed to load — the API may be temporarily down, or an ad blocker / privacy extension is blocking it. Try again in a moment or <button class="link-btn" style="color:#fca5a5" onclick="location.reload()">reload</button>.
   </div>
   <div id="main"></div>
 </div>
@@ -564,8 +564,8 @@ const API_DIRECT    = 'https://juicewrldapi.com'; // used for audio — <audio> 
 const IMG_BASE      = 'https://juicewrldapi.com';
 
 // Build an audio URL from a path or full URL.
-// Audio elements don't need CORS headers so we hit juicewrldapi.com directly,
-// avoiding the Cloudflare Worker proxy's streaming limitations.
+// Route through the proxy (API_BASE) — this is what actually works.
+// juicewrldapi.com/files/download/ hit directly does not stream correctly.
 function AUDIO_URL(rawPath) {
   let p = String(rawPath || '');
   // If file_names returns a full URL like https://juicewrldapi.com/files/download/?path=...
@@ -583,7 +583,7 @@ function AUDIO_URL(rawPath) {
     } catch(e) {}
   }
   p = p.replace(/^\//, ''); // strip leading slash
-  return `${API_DIRECT}/files/download/?path=${encodeURIComponent(p)}`;
+  return `${API_BASE}/files/download/?path=${encodeURIComponent(p)}`;
 }
 const MAX_GUESSES   = 7;
 const STATS_KEY     = 'jwdle_stats_v2';
@@ -941,7 +941,7 @@ function playClip() {
     })
     .catch(() => {
       setPlayBtnState(false);
-      toast('Audio failed to load — try refreshing the page');
+      toast('Audio failed — API may be down or ad blocker is active');
       if (!audioBlocked) {
         audioBlocked = true;
         document.getElementById('blockerBanner').classList.remove('hidden');
@@ -1546,7 +1546,7 @@ async function playDay(dateKey) {
         <div style="font-size:2.5rem;margin-bottom:12px">💀</div>
         <p style="color:var(--text2);font-weight:600;margin-bottom:4px">Couldn't load the song</p>
         <p style="color:var(--text2);font-size:.82rem;margin-bottom:18px">
-          Check your connection and try again. If the issue persists, a privacy extension may be blocking the audio API.
+          The API may be temporarily down, or an ad blocker is interfering. Try again in a moment.
         </p>
         <button class="btn btn-primary" onclick="playDay('${dateKey}')">Retry</button>
       </div>`;
