@@ -560,8 +560,31 @@
 //  CONSTANTS
 // ══════════════════════════════════════════════
 const API_BASE      = 'https://juicewrld-proxy.epichackermanmilk.workers.dev';
-const AUDIO_URL     = path => `${API_BASE}/files/download?path=${encodeURIComponent(path)}`;
+const API_DIRECT    = 'https://juicewrldapi.com'; // used for audio — <audio> elements bypass CORS
 const IMG_BASE      = 'https://juicewrldapi.com';
+
+// Build an audio URL from a path or full URL.
+// Audio elements don't need CORS headers so we hit juicewrldapi.com directly,
+// avoiding the Cloudflare Worker proxy's streaming limitations.
+function AUDIO_URL(rawPath) {
+  let p = String(rawPath || '');
+  // If file_names returns a full URL like https://juicewrldapi.com/files/download/?path=...
+  // extract just the path query-param value from it
+  if (p.startsWith('http://') || p.startsWith('https://')) {
+    try {
+      const u = new URL(p);
+      // Case A: already a /files/download/ URL — grab its path param
+      if (u.pathname.includes('download') && u.searchParams.get('path')) {
+        p = u.searchParams.get('path');
+      } else {
+        // Case B: direct media URL — use the pathname as the path
+        p = u.pathname.replace(/^\//, '');
+      }
+    } catch(e) {}
+  }
+  p = p.replace(/^\//, ''); // strip leading slash
+  return `${API_DIRECT}/files/download/?path=${encodeURIComponent(p)}`;
+}
 const MAX_GUESSES   = 7;
 const STATS_KEY     = 'jwdle_stats_v2';
 const HISTORY_KEY   = 'jwdle_history_v1';
@@ -686,6 +709,11 @@ function normalize(s) {
 function stripVersion(s) {
   return s.replace(/\s*\(v\d+[^)]*\)\s*$/i,'').replace(/\s*\[v\d+[^)]*\]\s*$/i,'').trim();
 }
+// Extract the audio path from wherever the API put it (top-level or nested)
+function extractRawPath(result) {
+  if (!result) return null;
+  return result.path || (result.song && result.song.path) || result.audio_path || result.file_path || null;
+}
 
 async function getDailySong(dateKey) {
   // 1. Check device cache first
@@ -755,12 +783,14 @@ async function getDailySong(dateKey) {
   for (let i = 0; i < 25; i++) {
     try {
       const r = await fetch(`${API_BASE}/radio/random/`);
-      if (!r.ok) continue;
+      if (!r.ok) { await new Promise(res => setTimeout(res, 200)); continue; }
       const result = await r.json();
-      if (!result || !result.path) continue;
-      if (!anyValid) anyValid = result;
-      const songName = (result.song && result.song.name) || result.title || '';
-      if (normalize(songName) === targetNorm) {
+      if (!result) continue;
+      // Accept if we can find a path anywhere in the response
+      const p = extractRawPath(result);
+      if (!anyValid && p) anyValid = result;
+      const songName = (result.song && result.song.name) || result.name || result.title || '';
+      if (normalize(songName) === targetNorm && p) {
         saveDailySong(dateKey, result);
         return result;
       }
@@ -768,7 +798,7 @@ async function getDailySong(dateKey) {
     await new Promise(res => setTimeout(res, 150));
   }
 
-  // 5. Last resort: use any valid song fetched (cached per device all day)
+  // 5. Last resort: any valid song is better than nothing
   if (anyValid) {
     saveDailySong(dateKey, anyValid);
     return anyValid;
@@ -868,6 +898,13 @@ function playClip() {
   const start   = state.startSec || 0;
 
   stopAudio();
+
+  // Recreate audio element if it errored during preload — a MediaError state
+  // is sticky and cannot be recovered; you must make a new Audio() object.
+  if (audio && audio.error) {
+    audio = null;
+    audioBlocked = false;
+  }
 
   if (!audio) {
     audio = new Audio();
