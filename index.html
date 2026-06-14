@@ -1028,12 +1028,15 @@ function checkGuess(input, songData) {
 function getClueValue(key, songData) {
   const name = ((songData.song && songData.song.name) || songData.title || '').trim();
   const s    = songData.song || {};
+  // Strip parenthetical/bracketed suffixes like (v1), (v2.5), [leak], etc.
+  // Used for letter-count and last-letter so version tags don't count.
+  const nameCore = name.replace(/\s*[\(\[][^\)\]]*[\)\]]/g, '').trim();
   switch (key) {
     case 'era':      return (s.era && s.era.name) || s.era || '';
     case 'length':   return s.length || '';
-    case 'letters':  return name.replace(/\s/g,'').length + ' letters';
+    case 'letters':  return nameCore.replace(/\s/g,'').length + ' letters';
     case 'first':    return name[0] ? name[0].toUpperCase() : '';
-    case 'last':     return name[name.length-1] ? name[name.length-1].toUpperCase() : '';
+    case 'last':     return nameCore[nameCore.length-1] ? nameCore[nameCore.length-1].toUpperCase() : '';
     case 'producer': return s.producers || '';
     default:         return '';
   }
