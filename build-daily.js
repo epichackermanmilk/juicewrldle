@@ -14,7 +14,11 @@ const https = require('https');
 const fs    = require('fs');
 const path  = require('path');
 
-const API        = 'https://juicewrldapi.com';
+const API = 'https://juicewrld-proxy.epichackermanmilk.workers.dev';
+
+// Proxy requires requests to appear from juicewrldle.cc
+const FETCH_OPTS = { headers: { 'Origin': 'https://juicewrldle.cc', 'Referer': 'https://juicewrldle.cc/', 'Accept': 'application/json' } };
+const apiFetch = (url) => fetch(url, FETCH_OPTS);
 const SONGS_FILE = path.join(__dirname, 'songs.json');
 const OUT_FILE   = path.join(__dirname, 'songs.json'); // overwrite in-place
 
