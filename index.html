@@ -720,65 +720,20 @@ async function getDailySong(dateKey) {
   const cached = loadCachedSong(dateKey);
   if (cached && cached.path) return cached;
 
-  // 2. Load songs list to get deterministic target name
+  // 2. Load songs list to get the deterministic target name for today
   await ensureAcCache();
   if (!acCache || acCache.length === 0) throw new Error('Song list unavailable');
 
-  const dayIdx   = getDayIndex(dateKey);
-  const idx      = ((dayIdx % acCache.length) + acCache.length) % acCache.length;
-  const target   = acCache[idx];
+  const dayIdx     = getDayIndex(dateKey);
+  const idx        = ((dayIdx % acCache.length) + acCache.length) % acCache.length;
+  const target     = acCache[idx];
   const targetNorm = normalize(target.name);
 
-  // 3. Primary: GET /songs/?search=name&file_names_array=true
-  //    The songs endpoint returns file_names (audio paths) for each song.
-  //    This guarantees everyone gets the same song — fully deterministic.
-  try {
-    const url = `${API_BASE}/songs/?search=${encodeURIComponent(target.name)}&file_names_array=true&page_size=10`;
-    const r = await fetch(url);
-    if (r.ok) {
-      const data = await r.json();
-      const results = Array.isArray(data) ? data : (data.results || []);
-
-      // Find exact name match
-      const match = results.find(s => {
-        const n = normalize(s.name || '');
-        return n === targetNorm || normalize(stripVersion(n)) === normalize(stripVersion(target.name));
-      });
-
-      if (match) {
-        // file_names is an array (because we passed file_names_array=true)
-        const files = Array.isArray(match.file_names)
-          ? match.file_names
-          : (match.file_names ? String(match.file_names).split(',').map(s => s.trim()) : []);
-
-        if (files.length > 0) {
-          // Pick file deterministically — same index for all users on same day
-          const path = files[dayIdx % files.length];
-
-          const songObj = {
-            path,
-            title: match.name,
-            song: {
-              name:          match.name,
-              era:           match.era,          // {name:'...'} or string
-              length:        match.length        || '',
-              producers:     match.producers     || '',
-              track_titles:  match.track_titles  || [],
-              category:      match.category      || '',
-              image_url:     match.image_url     || null,
-              release_date:  match.release_date  || null,
-            },
-          };
-          saveDailySong(dateKey, songObj);
-          return songObj;
-        }
-      }
-    }
-  } catch(e) {
-    console.warn('[JuiceWRLDLE] Songs API search failed:', e.message);
-  }
-
-  // 4. Fallback: fetch random songs and match by name (up to 25 tries)
+  // 3. Use /radio/random/ — result.path is always a real audio file path.
+  //    NOTE: /songs/?file_names_array=true was tried but file_names contains
+  //    song display names, NOT audio paths, so it cannot be used for AUDIO_URL.
+  //    /radio/random/ is the only endpoint that exposes a usable audio path.
+  //    Try up to 25 times to land on the target song; any valid result is a fallback.
   let anyValid = null;
   for (let i = 0; i < 25; i++) {
     try {
@@ -786,9 +741,8 @@ async function getDailySong(dateKey) {
       if (!r.ok) { await new Promise(res => setTimeout(res, 200)); continue; }
       const result = await r.json();
       if (!result) continue;
-      // Accept if we can find a path anywhere in the response
       const p = extractRawPath(result);
-      if (!anyValid && p) anyValid = result;
+      if (p && !anyValid) anyValid = result;
       const songName = (result.song && result.song.name) || result.name || result.title || '';
       if (normalize(songName) === targetNorm && p) {
         saveDailySong(dateKey, result);
@@ -798,7 +752,7 @@ async function getDailySong(dateKey) {
     await new Promise(res => setTimeout(res, 150));
   }
 
-  // 5. Last resort: any valid song is better than nothing
+  // 4. Last resort: any valid song is better than a broken game
   if (anyValid) {
     saveDailySong(dateKey, anyValid);
     return anyValid;
