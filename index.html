@@ -698,9 +698,29 @@ async function ensureAcCache() {
 
 // ══════════════════════════════════════════════
 //  DAILY SONG FETCHING
-//  Strategy: pick target song name from songs.json
-//  by deterministic index, then get full data from API.
+//  Strategy: seeded deterministic shuffle of song IDs 1–2452.
+//  dayIdx % SONG_SCHEDULE.length picks the same ID for every user.
+//  Single fetch to /songs/{id}/ — no randomness, no retries.
 // ══════════════════════════════════════════════
+
+// Pre-shuffled ID schedule — seeded Fisher-Yates so every client gets
+// the identical ordering. No song repeats for 2452 days (~6.7 years).
+const TOTAL_SONGS   = 2452;
+const SONG_SCHEDULE = (function () {
+  const ids = Array.from({ length: TOTAL_SONGS }, (_, i) => i + 1);
+  // LCG PRNG — seed 999 is fixed forever; changing it shifts the whole calendar.
+  let s = 999;
+  const rand = () => {
+    s = (Math.imul(s, 1664525) + 1013904223) | 0;
+    return (s >>> 0) / 0x100000000;
+  };
+  for (let i = ids.length - 1; i > 0; i--) {
+    const j = Math.floor(rand() * (i + 1));
+    [ids[i], ids[j]] = [ids[j], ids[i]];
+  }
+  return ids;
+})();
+
 function normalize(s) {
   return String(s).toLowerCase()
     .replace(/[''`]/g,"'").replace(/[""]/g,'"')
@@ -716,77 +736,41 @@ function extractRawPath(result) {
 }
 
 async function getDailySong(dateKey) {
-  // 1. Check device cache first (cache is keyed by date — everyone gets same song once found)
+  // 1. Device cache — once fetched today's song is stored locally (keyed by date)
   const cached = loadCachedSong(dateKey);
   if (cached && cached.path) return cached;
 
-  // 2. Load songs list
-  await ensureAcCache();
-  if (!acCache || acCache.length === 0) throw new Error('Song list unavailable');
+  // 2. Pick today's song ID — deterministic for all users on the same date
+  const dayIdx = getDayIndex(dateKey);
+  const songId = SONG_SCHEDULE[dayIdx % SONG_SCHEDULE.length];
 
-  const dayIdx     = getDayIndex(dateKey);
-  const idx        = ((dayIdx % acCache.length) + acCache.length) % acCache.length;
-  const target     = acCache[idx];
-  const targetNorm = normalize(target.name);
+  // 3. Fetch song directly by ID — one call, always the same result
+  const r = await fetch(`${API_BASE}/songs/${songId}/`);
+  if (!r.ok) throw new Error(`Could not load song (ID ${songId}): HTTP ${r.status}`);
+  const data = await r.json();
 
-  // 3. Fast path: songs.json already has the audio path baked in.
-  //    Run `node build-daily.js` in the repo once to generate this.
-  //    Once paths are present this function costs 0 API calls and is 100% deterministic.
-  if (target.path) {
-    const songObj = {
-      path:  target.path,
-      title: target.name,
-      song: {
-        name:         target.name,
-        era:          target.era    ? { name: target.era } : null,
-        length:       target.length || '',
-        producers:    target.producers || '',
-        track_titles: target.titles   || [],
-        category:     target.category || '',
-        image_url:    target.image_url || null,
-        release_date: target.release_date || null,
-      },
-    };
-    saveDailySong(dateKey, songObj);
-    return songObj;
-  }
+  // API may return flat { name, path, ... } or nested { song: { name, path, ... } }
+  const songNode = (data.song && typeof data.song === 'object') ? data.song : data;
+  const p = extractRawPath(data);
+  if (!p) throw new Error(`No audio path returned for song ID ${songId}`);
 
-  // 4. Slow path: songs.json has no paths yet (build-daily.js hasn't been run).
-  //    Call /radio/random/ and try to land on the target song by name.
-  //    IMPORTANT: we do NOT fall back to a random non-matching song — that would
-  //    give every user a different song, breaking the whole point of a daily game.
-  //    We try hard (100 calls) then throw; the UI shows a "try again" button.
-  const targetNorms = new Set([targetNorm, normalize(stripVersion(target.name))]);
-  // Also accept alt titles stored in songs.json
-  for (const t of (target.titles || [])) {
-    targetNorms.add(normalize(t));
-    targetNorms.add(normalize(stripVersion(t)));
-  }
+  const songObj = {
+    path:  p,
+    title: songNode.name || '',
+    song: {
+      name:         songNode.name         || '',
+      era:          songNode.era          || null,
+      length:       songNode.length       || '',
+      producers:    songNode.producers    || '',
+      track_titles: songNode.track_titles || [],
+      category:     songNode.category     || '',
+      image_url:    songNode.image_url    || null,
+      release_date: songNode.release_date || null,
+    },
+  };
 
-  for (let i = 0; i < 100; i++) {
-    try {
-      const r = await fetch(`${API_BASE}/radio/random/`);
-      if (!r.ok) { await new Promise(res => setTimeout(res, 300)); continue; }
-      const result = await r.json();
-      if (!result) continue;
-      const p = extractRawPath(result);
-      if (!p) continue;
-      const songName = (result.song && result.song.name) || result.name || result.title || '';
-      const songNorm = normalize(songName);
-      if (targetNorms.has(songNorm) || targetNorms.has(normalize(stripVersion(songName)))) {
-        saveDailySong(dateKey, result);
-        return result;
-      }
-    } catch(e) {}
-    await new Promise(res => setTimeout(res, 100));
-  }
-
-  // DO NOT return a random wrong song here — that silently breaks the daily game.
-  // Instruct the user to run build-daily.js to add paths to songs.json.
-  throw new Error(
-    `Could not find audio for today's song "${target.name}" after 100 tries. ` +
-    `Run \`node build-daily.js\` in the repo to add audio paths to songs.json.`
-  );
+  saveDailySong(dateKey, songObj);
+  return songObj;
 }
 
 // ══════════════════════════════════════════════
