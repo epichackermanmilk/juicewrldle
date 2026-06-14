@@ -237,6 +237,11 @@
     }
     .guess-input:focus { border-color:var(--accent); box-shadow:0 0 0 3px rgba(168,85,247,.18); }
     .guess-input::placeholder { color:rgba(196,181,253,.38); }
+    /* Input card must sit above surrounding cards in its own stacking context.
+       Each .card with backdrop-filter creates a new stacking context, so the
+       clues card (below the input card in DOM) would otherwise paint on top.
+       z-index:20 on .input-card ensures its stacking context wins. */
+    .input-card { position:relative; z-index:20; }
     .ac-list {
       position:absolute; top:calc(100% + 4px); left:0; right:0;
       background:rgba(12,3,28,.97); border:1px solid var(--glass-border);
@@ -749,10 +754,28 @@ async function getDailySong(dateKey) {
   if (!r.ok) throw new Error(`Could not load song (ID ${songId}): HTTP ${r.status}`);
   const data = await r.json();
 
+  // DEBUG: log the full raw response so we can see every field the API returns
+  console.log('[JW] /songs/' + songId + '/ raw response:', JSON.stringify(data).slice(0, 1000));
+  console.log('[JW] top-level keys:', Object.keys(data).join(', '));
+
   // API may return flat { name, path, ... } or nested { song: { name, path, ... } }
   const songNode = (data.song && typeof data.song === 'object') ? data.song : data;
-  const p = extractRawPath(data);
-  if (!p) throw new Error(`No audio path returned for song ID ${songId}`);
+
+  // Check many possible path field names
+  const p = data.path || data.audio_path || data.file_path || data.audio_url || data.stream_url
+         || data.download_url || data.media_url
+         || (data.song && (data.song.path || data.song.audio_path || data.song.audio_url))
+         || null;
+
+  console.log('[JW] extracted path:', p, '| song name:', songNode.name);
+
+  if (!p) {
+    // /songs/{id}/ has no audio path — throw a helpful error
+    throw new Error(
+      `Song ID ${songId} ("${songNode.name || '?'}") loaded but has no audio path. ` +
+      `API keys: ${Object.keys(data).join(', ')}. Check browser console for full response.`
+    );
+  }
 
   const songObj = {
     path:  p,
@@ -769,6 +792,7 @@ async function getDailySong(dateKey) {
     },
   };
 
+  console.log('[JW] song loaded:', songObj.title, '| proxy audio URL:', AUDIO_URL(p));
   saveDailySong(dateKey, songObj);
   return songObj;
 }
@@ -867,17 +891,34 @@ function playClip() {
 
   // Recreate audio element if it errored during preload — a MediaError state
   // is sticky and cannot be recovered; you must make a new Audio() object.
-  if (audio && audio.error) {
+  if (audio && audio.error && audio._triedDirect) {
+    // Both proxy and direct failed — keep audioBlocked state
+    audio = null;
+  } else if (audio && audio.error) {
     audio = null;
     audioBlocked = false;
   }
 
   if (!audio) {
+    const proxyUrl  = AUDIO_URL(song.path);
+    const directUrl = `${API_DIRECT}/files/download/?path=${encodeURIComponent(song.path.replace(/^\//, ''))}`;
+    console.log('[JW-AUDIO] playClip creating audio | proxy:', proxyUrl);
     audio = new Audio();
     audio.volume = effectiveVolume();
-    audio.src = AUDIO_URL(song.path);
+    audio.src = proxyUrl;
+    audio._proxyUrl    = proxyUrl;
+    audio._directUrl   = directUrl;
+    audio._triedDirect = false;
     audio.addEventListener('error', () => {
       setPlayBtnState(false);
+      console.warn('[JW-AUDIO] error on src:', audio.src, '| code:', audio.error && audio.error.code);
+      if (!audio._triedDirect) {
+        audio._triedDirect = true;
+        console.log('[JW-AUDIO] proxy failed → trying direct URL');
+        audio.src = directUrl;
+        audio.load();
+        return;
+      }
       if (!audioBlocked) {
         audioBlocked = true;
         document.getElementById('blockerBanner').classList.remove('hidden');
@@ -905,8 +946,38 @@ function playClip() {
       };
       waveAnimId = requestAnimationFrame(tick);
     })
-    .catch(() => {
+    .catch((err) => {
       setPlayBtnState(false);
+      console.warn('[JW-AUDIO] play() rejected:', err, '| src:', audio && audio.src);
+      // If we haven't tried direct yet and play() rejected, switch URLs and retry
+      if (audio && !audio._triedDirect) {
+        audio._triedDirect = true;
+        console.log('[JW-AUDIO] play() failed on proxy → switching to direct URL');
+        audio.src = audio._directUrl;
+        audio.load();
+        audio.currentTime = state.startSec || 0;
+        audio.play()
+          .then(() => {
+            state.playCount++;
+            saveGameState(currentDate, state);
+            render();
+            setPlayBtnState(true);
+            const tick2 = () => {
+              if (!audio) return;
+              const elapsed = audio.currentTime - (state.startSec || 0);
+              if (elapsed >= clipSec) { stopAudio(); setPlayBtnState(false); return; }
+              drawWave(elapsed / clipSec);
+              waveAnimId = requestAnimationFrame(tick2);
+            };
+            waveAnimId = requestAnimationFrame(tick2);
+          })
+          .catch(() => {
+            setPlayBtnState(false);
+            toast('Audio failed — API may be down or ad blocker is active');
+            if (!audioBlocked) { audioBlocked = true; document.getElementById('blockerBanner').classList.remove('hidden'); }
+          });
+        return;
+      }
       toast('Audio failed — API may be down or ad blocker is active');
       if (!audioBlocked) {
         audioBlocked = true;
@@ -1165,9 +1236,10 @@ function render() {
       </div>`;
   }
 
-  // Input
+  // Input — .input-card gives this card z-index:20 so the autocomplete dropdown
+  // renders above the clues card (which comes later in the DOM)
   const inputHtml = isDone ? '' : `
-    <div class="card">
+    <div class="card input-card">
       <div class="input-wrap">
         <input id="guessInput" class="guess-input" type="text"
           placeholder="Type a Juice WRLD song…" autocomplete="off" spellcheck="false">
@@ -1495,12 +1567,28 @@ async function playDay(dateKey) {
     render();
 
     // Preload audio (only if game isn't done)
-    if (!state.done) {
+    if (!state.done && song.path) {
+      const proxyUrl  = AUDIO_URL(song.path);
+      const directUrl = `${API_DIRECT}/files/download/?path=${encodeURIComponent(song.path.replace(/^\//, ''))}`;
+      console.log('[JW-AUDIO] preload proxy URL:', proxyUrl);
+      console.log('[JW-AUDIO] preload direct URL:', directUrl);
       audio = new Audio();
       audio.preload = 'auto';
       audio.volume  = effectiveVolume();
-      audio.src     = AUDIO_URL(song.path);
+      audio.src     = proxyUrl;
+      audio._proxyUrl  = proxyUrl;
+      audio._directUrl = directUrl;
+      audio._triedDirect = false;
       audio.addEventListener('error', () => {
+        console.warn('[JW-AUDIO] error on src:', audio.src, '| code:', audio.error && audio.error.code);
+        // First failure: try direct URL before showing error banner
+        if (!audio._triedDirect) {
+          audio._triedDirect = true;
+          console.log('[JW-AUDIO] proxy failed → trying direct URL');
+          audio.src = directUrl;
+          audio.load();
+          return;
+        }
         if (!audioBlocked) {
           audioBlocked = true;
           document.getElementById('blockerBanner').classList.remove('hidden');
