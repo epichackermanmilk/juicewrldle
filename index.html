@@ -741,60 +741,94 @@ function extractRawPath(result) {
 }
 
 async function getDailySong(dateKey) {
-  // 1. Device cache — once fetched today's song is stored locally (keyed by date)
+  // 1. Device cache — once fetched, today's song is stored locally (keyed by date)
   const cached = loadCachedSong(dateKey);
   if (cached && cached.path) return cached;
 
-  // 2. Pick today's song ID — deterministic for all users on the same date
   const dayIdx = getDayIndex(dateKey);
   const songId = SONG_SCHEDULE[dayIdx % SONG_SCHEDULE.length];
 
-  // 3. Fetch song directly by ID — one call, always the same result
-  const r = await fetch(`${API_BASE}/songs/${songId}/`);
-  if (!r.ok) throw new Error(`Could not load song (ID ${songId}): HTTP ${r.status}`);
-  const data = await r.json();
+  // ── STRATEGY 1: deterministic via SONG_SCHEDULE ──────────────────────────
+  // Fetch metadata from /songs/{id}/, then look up the audio path in songs.json.
+  // songs.json gains path fields once build-daily.js has been run.
+  try {
+    const r = await fetch(`${API_BASE}/songs/${songId}/`);
+    if (r.ok) {
+      const data = await r.json();
+      const songNode = (data.song && typeof data.song === 'object') ? data.song : data;
 
-  // DEBUG: log the full raw response so we can see every field the API returns
-  console.log('[JW] /songs/' + songId + '/ raw response:', JSON.stringify(data).slice(0, 1000));
-  console.log('[JW] top-level keys:', Object.keys(data).join(', '));
+      // Direct path from the detail endpoint (rare, but check)
+      let p = data.path || data.audio_path || data.file_path || data.audio_url
+           || data.stream_url || data.download_url || data.media_url
+           || (data.song && (data.song.path || data.song.audio_path || data.song.audio_url))
+           || null;
 
-  // API may return flat { name, path, ... } or nested { song: { name, path, ... } }
-  const songNode = (data.song && typeof data.song === 'object') ? data.song : data;
+      // No direct path → look it up in songs.json (populated by build-daily.js)
+      if (!p && songNode.name) {
+        await ensureAcCache();
+        const entry = (acCache || []).find(s => normalize(s.name) === normalize(songNode.name));
+        if (entry && entry.path) {
+          p = entry.path;
+          console.log('[JW] path from songs.json for:', songNode.name);
+        }
+      }
 
-  // Check many possible path field names
-  const p = data.path || data.audio_path || data.file_path || data.audio_url || data.stream_url
-         || data.download_url || data.media_url
-         || (data.song && (data.song.path || data.song.audio_path || data.song.audio_url))
-         || null;
+      if (p) {
+        const songObj = {
+          path:  p,
+          title: songNode.name || '',
+          song: {
+            name:         songNode.name         || '',
+            era:          songNode.era          || null,
+            length:       songNode.length       || '',
+            producers:    songNode.producers    || '',
+            track_titles: songNode.track_titles || [],
+            category:     songNode.category     || '',
+            image_url:    songNode.image_url    || null,
+            release_date: songNode.release_date || null,
+          },
+        };
+        console.log('[JW] deterministic song loaded:', songObj.title);
+        saveDailySong(dateKey, songObj);
+        return songObj;
+      }
 
-  console.log('[JW] extracted path:', p, '| song name:', songNode.name);
-
-  if (!p) {
-    // /songs/{id}/ has no audio path — throw a helpful error
-    throw new Error(
-      `Song ID ${songId} ("${songNode.name || '?'}") loaded but has no audio path. ` +
-      `API keys: ${Object.keys(data).join(', ')}. Check browser console for full response.`
-    );
+      console.warn('[JW] song ID', songId, '(' + (songNode.name||'?') + ') has no audio path yet. Run build-daily.js to populate songs.json.');
+    }
+  } catch (e) {
+    console.warn('[JW] /songs/ fetch failed:', e.message);
   }
 
-  const songObj = {
-    path:  p,
-    title: songNode.name || '',
+  // ── STRATEGY 2: /radio/random/ fallback ──────────────────────────────────
+  // Audio path and answer are both random but cached locally so each user
+  // gets the same song for the full day. Not shared across users until
+  // songs.json is populated with paths via build-daily.js.
+  console.log('[JW] falling back to /radio/random/');
+  const r2 = await fetch(`${API_BASE}/radio/random/`);
+  if (!r2.ok) throw new Error('API error: HTTP ' + r2.status);
+  const data2 = await r2.json();
+  const p2 = data2.path || (data2.song && data2.song.path) || null;
+  if (!p2) throw new Error('No audio path from /radio/random/ — API may be down.');
+
+  const node2 = (data2.song && typeof data2.song === 'object') ? data2.song : data2;
+  const songObj2 = {
+    path:  p2,
+    title: node2.name || '',
     song: {
-      name:         songNode.name         || '',
-      era:          songNode.era          || null,
-      length:       songNode.length       || '',
-      producers:    songNode.producers    || '',
-      track_titles: songNode.track_titles || [],
-      category:     songNode.category     || '',
-      image_url:    songNode.image_url    || null,
-      release_date: songNode.release_date || null,
+      name:         node2.name         || '',
+      era:          node2.era          || null,
+      length:       node2.length       || '',
+      producers:    node2.producers    || '',
+      track_titles: node2.track_titles || [],
+      category:     node2.category     || '',
+      image_url:    node2.image_url    || null,
+      release_date: node2.release_date || null,
     },
   };
 
-  console.log('[JW] song loaded:', songObj.title, '| proxy audio URL:', AUDIO_URL(p));
-  saveDailySong(dateKey, songObj);
-  return songObj;
+  console.log('[JW] fallback song via /radio/random/:', songObj2.title);
+  saveDailySong(dateKey, songObj2);
+  return songObj2;
 }
 
 // ══════════════════════════════════════════════
