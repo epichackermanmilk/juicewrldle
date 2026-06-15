@@ -27,7 +27,7 @@
 </head>
 <body>
 <h1>🔧 JuiceWRLDLE Path Builder</h1>
-<div class="sub">Probes for fast bulk endpoints first, then falls back to parallel /radio/random/.</div>
+<div class="sub">Fetches every /songs/{id}/ endpoint and matches paths to songs.json by name.</div>
 
 <div class="row">
   <label>GitHub PAT:</label>
@@ -46,8 +46,9 @@
 <script>
 const PROXY      = 'https://juicewrld-proxy.epichackermanmilk.workers.dev';
 const REPO       = 'epichackermanmilk/juicewrldle';
-const CONCUR     = 40;       // parallel /radio/random/ calls
-const SAVE_EVERY = 300;
+const MAX_ID     = 2700;   // scan IDs 1–2700 to cover all songs + buffer
+const CONCUR     = 40;     // parallel requests
+const SAVE_EVERY = 300;    // auto-save every N IDs processed
 
 let running    = false;
 let pathMap    = {};
@@ -55,6 +56,7 @@ let songSet    = null;
 let totalSongs = 0;
 let songs      = [];
 let currentSha = '';
+let hasPathsInApi = null;  // discovered on first response
 
 const logEl    = document.getElementById('log');
 const fill     = document.getElementById('fill');
@@ -109,7 +111,7 @@ async function commitSongs(pat, label) {
     });
     const result = await r.json();
     if (r.ok) {
-      appendLog('ok', '[saved] ' + withPaths + '/' + songs.length + ' have paths (' + merged + ' new)');
+      appendLog('ok', '[saved] ' + withPaths + '/' + songs.length + ' songs have paths (' + merged + ' new)');
       return withPaths;
     } else {
       appendLog('err', '[save failed] ' + JSON.stringify(result).slice(0, 150));
@@ -118,122 +120,33 @@ async function commitSongs(pat, label) {
   return songs.filter(s => s.path).length;
 }
 
-// ── PHASE 0: probe for bulk endpoints ────────────────────────────────────────
-async function probeBulkEndpoints() {
-  appendLog('info', '=== Probing for bulk endpoints ===');
+async function fetchSongId(id) {
+  try {
+    const r = await fetch(PROXY + '/songs/' + id + '/');
+    if (!r.ok) return null;
+    const d = await r.json();
+    const node = (d.song && typeof d.song === 'object') ? d.song : d;
+    const name = node.name || d.name || null;
+    const path = d.path || d.audio_path || d.audio_url || d.file_path || d.stream_url ||
+                 d.download_url || d.media_url ||
+                 (d.song && (d.song.path || d.song.audio_path || d.song.audio_url)) || null;
 
-  // Try /songs/ with page_size and various field params that might expose path
-  const probes = [
-    '/songs/?page_size=10',
-    '/songs/?page_size=10&include_path=true',
-    '/songs/?page_size=10&fields=name,path',
-    '/songs/?page_size=10&format=json',
-    '/radio/?page_size=10',
-    '/radio/?count=10',
-    '/radio/list/?page_size=10',
-  ];
-
-  for (const endpoint of probes) {
-    try {
-      const r = await fetch(PROXY + endpoint);
-      if (!r.ok) { appendLog('warn', endpoint + ' → HTTP ' + r.status); continue; }
-      const d = await r.json();
-      // Check if results array items have a path field
-      const results = d.results || d.songs || d.data || (Array.isArray(d) ? d : null);
-      if (results && results.length > 0) {
-        const first = results[0];
-        const hasPath = !!(first.path || first.audio_path || first.audio_url || first.file_path);
-        const keys = Object.keys(first).join(', ');
-        appendLog(hasPath ? 'ok' : 'warn',
-          endpoint + ' → ' + results.length + ' results | path: ' + (hasPath ? 'YES ✓' : 'no') + ' | keys: ' + keys);
-        if (hasPath) return { endpoint, pathField: first.path ? 'path' : first.audio_path ? 'audio_path' : 'audio_url', total: d.count || d.total || null };
+    // Log what the API actually returns on first call
+    if (hasPathsInApi === null) {
+      hasPathsInApi = !!path;
+      appendLog(path ? 'ok' : 'warn',
+        'ID 1 sample — name: "' + name + '" | path field: ' + (path || 'NOT PRESENT') +
+        ' | all keys: ' + Object.keys(d).join(', '));
+      if (!path) {
+        appendLog('warn', 'No path in /songs/{id}/ — will match names to songs.json only.');
+        appendLog('warn', 'You will still need /radio/random/ for paths. Starting that after ID scan...\n');
       } else {
-        appendLog('warn', endpoint + ' → no results array | keys: ' + Object.keys(d).join(', '));
+        appendLog('ok', 'Path field exists! Collecting all paths via ID scan.\n');
       }
-    } catch(e) {
-      appendLog('err', endpoint + ' → ' + e.message);
-    }
-  }
-  return null;
-}
-
-// ── PHASE 1: paginate bulk endpoint ──────────────────────────────────────────
-async function collectViaPagination(endpoint, pathField) {
-  appendLog('info', '\n=== Fast path: paginating ' + endpoint + ' ===');
-  let page = 1, collected = 0;
-  const pageSize = 100;
-  const base = endpoint.split('?')[0];
-
-  while (running) {
-    try {
-      const r = await fetch(PROXY + base + '?page_size=' + pageSize + '&page=' + page);
-      if (!r.ok) { appendLog('err', 'Page ' + page + ' HTTP ' + r.status); break; }
-      const d = await r.json();
-      const results = d.results || d.songs || d.data || (Array.isArray(d) ? d : []);
-      if (!results.length) break;
-
-      for (const item of results) {
-        const p = item[pathField] || item.path || item.audio_path || item.audio_url || null;
-        const n = item.name || (item.song && item.song.name) || null;
-        if (p && n && !pathMap[n]) { pathMap[n] = p; collected++; }
-      }
-
-      const covered = coveredCount();
-      updateBar(covered);
-      appendLog('ok', 'Page ' + page + ': ' + results.length + ' items | songs.json covered: ' + covered + '/' + totalSongs);
-
-      if (!d.next && results.length < pageSize) break;
-      page++;
-      await new Promise(r => setTimeout(r, 100));
-    } catch(e) { appendLog('err', 'Pagination error: ' + e.message); break; }
-  }
-  return coveredCount();
-}
-
-// ── PHASE 2: /radio/random/ fallback ─────────────────────────────────────────
-async function collectViaRandom(pat) {
-  appendLog('info', '\n=== Fallback: parallel /radio/random/ (concurrency=' + CONCUR + ') ===\n');
-  let callsMade = 0, errors = 0, saveCounter = 0;
-
-  async function oneCall() {
-    if (!running) return;
-    callsMade++; saveCounter++;
-    try {
-      const r = await fetch(PROXY + '/radio/random/');
-      if (!r.ok) { errors++; return; }
-      const d = await r.json();
-      const p = d.path || (d.song && d.song.path) || null;
-      const n = (d.song && d.song.name) || d.name || null;
-      if (p && n && !pathMap[n]) pathMap[n] = p;
-    } catch(e) { errors++; }
-  }
-
-  while (running) {
-    const batch = [];
-    for (let i = 0; i < CONCUR; i++) batch.push(oneCall());
-    await Promise.all(batch);
-
-    const covered = coveredCount();
-    updateBar(covered);
-    statusEl.textContent = covered + '/' + totalSongs + ' covered (' + Math.round(covered/totalSongs*100) + '%) | ' + callsMade + ' calls | ' + errors + ' errors';
-
-    if (callsMade % 200 === 0) appendLog('ok', '[' + callsMade + ' calls] ' + covered + '/' + totalSongs + ' covered');
-
-    if (saveCounter >= SAVE_EVERY) {
-      saveCounter = 0;
-      appendLog('info', '\n[auto-save at ' + callsMade + ' calls]');
-      await commitSongs(pat, 'auto-save at ' + callsMade + ' calls');
-      appendLog('', '');
     }
 
-    if (covered >= totalSongs) {
-      appendLog('info', '\n🎉 100% after ' + callsMade + ' /radio/random/ calls!');
-      running = false;
-      break;
-    }
-
-    await new Promise(r => setTimeout(r, 15));
-  }
+    return { name, path };
+  } catch(e) { return null; }
 }
 
 async function startBuild() {
@@ -245,7 +158,6 @@ async function startBuild() {
   running = true;
   logEl.innerHTML = '';
 
-  // Load songs.json
   appendLog('info', '=== Loading songs.json ===');
   try {
     const r = await fetch('./songs.json');
@@ -261,21 +173,93 @@ async function startBuild() {
   try { currentSha = await getSha(pat); }
   catch(e) { appendLog('err', 'PAT error: ' + e.message); btn.disabled=false; return; }
 
-  // Try bulk endpoints first
-  const bulk = await probeBulkEndpoints();
+  appendLog('info', '\n=== Scanning /songs/1/ through /songs/' + MAX_ID + '/ (' + CONCUR + ' parallel) ===\n');
 
-  if (bulk) {
-    appendLog('ok', '\n✓ Bulk endpoint found: ' + bulk.endpoint);
-    await collectViaPagination(bulk.endpoint, bulk.pathField);
+  let processed = 0, matched = 0, saveCounter = 0, errors = 0;
+  const ids = Array.from({ length: MAX_ID }, (_, i) => i + 1);
+
+  // Process IDs in parallel batches
+  for (let i = 0; i < ids.length && running; i += CONCUR) {
+    const batch = ids.slice(i, i + CONCUR).map(async (id) => {
+      const result = await fetchSongId(id);
+      processed++;
+      saveCounter++;
+      if (!result) { errors++; return; }
+      const { name, path } = result;
+      if (name && path && !pathMap[name]) { pathMap[name] = path; matched++; }
+      else if (name && !path && songSet.has(name) && !pathMap[name]) {
+        // No path from ID endpoint, but we confirmed the name exists — log it
+      }
+    });
+
+    await Promise.all(batch);
+
     const covered = coveredCount();
-    appendLog('ok', 'Pagination done. Covered: ' + covered + '/' + totalSongs);
-    if (covered < totalSongs) {
-      appendLog('warn', (totalSongs - covered) + ' songs still missing — switching to /radio/random/ for remainder.');
-      await collectViaRandom(pat);
+    updateBar(covered);
+    statusEl.textContent = 'ID scan: ' + processed + '/' + MAX_ID + ' | matched: ' + matched + ' | songs.json covered: ' + covered + '/' + totalSongs;
+
+    if (Math.floor(processed / 200) > Math.floor((processed - CONCUR) / 200)) {
+      appendLog('ok', '[ID ' + processed + '] matched: ' + matched + ' | songs.json covered: ' + covered + '/' + totalSongs);
     }
-  } else {
-    appendLog('warn', '\nNo bulk endpoint with paths found — using /radio/random/ only.');
-    await collectViaRandom(pat);
+
+    if (saveCounter >= SAVE_EVERY) {
+      saveCounter = 0;
+      appendLog('info', '\n[auto-save at ID ' + processed + ']');
+      await commitSongs(pat, 'ID scan at ' + processed);
+      appendLog('', '');
+    }
+
+    await new Promise(r => setTimeout(r, 10));
+  }
+
+  const coveredAfterScan = coveredCount();
+  appendLog('info', '\nID scan complete. Covered: ' + coveredAfterScan + '/' + totalSongs);
+
+  // If IDs had no paths OR didn't cover everything, fall back to /radio/random/
+  if (coveredAfterScan < totalSongs) {
+    const remaining = totalSongs - coveredAfterScan;
+    appendLog('warn', remaining + ' songs still missing paths — switching to /radio/random/ for remainder.');
+    appendLog('info', '=== /radio/random/ fallback (concurrency=' + CONCUR + ') ===\n');
+
+    let callsMade = 0, errors2 = 0, saveCounter2 = 0;
+
+    while (running) {
+      const batch = Array.from({ length: CONCUR }, async () => {
+        if (!running) return;
+        callsMade++; saveCounter2++;
+        try {
+          const r = await fetch(PROXY + '/radio/random/');
+          if (!r.ok) { errors2++; return; }
+          const d = await r.json();
+          const p = d.path || (d.song && d.song.path) || null;
+          const n = (d.song && d.song.name) || d.name || null;
+          if (p && n && !pathMap[n]) pathMap[n] = p;
+        } catch(e) { errors2++; }
+      });
+
+      await Promise.all(batch);
+
+      const covered = coveredCount();
+      updateBar(covered);
+      statusEl.textContent = covered + '/' + totalSongs + ' covered | ' + callsMade + ' calls | ' + errors2 + ' errors';
+
+      if (callsMade % 200 === 0) appendLog('ok', '[' + callsMade + ' calls] ' + covered + '/' + totalSongs + ' covered');
+
+      if (saveCounter2 >= SAVE_EVERY) {
+        saveCounter2 = 0;
+        appendLog('info', '\n[auto-save at ' + callsMade + ' calls]');
+        await commitSongs(pat, 'radio fallback at ' + callsMade + ' calls');
+        appendLog('', '');
+      }
+
+      if (covered >= totalSongs) {
+        appendLog('info', '\n🎉 100% coverage after ' + callsMade + ' /radio/random/ calls!');
+        running = false;
+        break;
+      }
+
+      await new Promise(r => setTimeout(r, 15));
+    }
   }
 
   stopBtn.disabled = true;
