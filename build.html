@@ -27,7 +27,7 @@
 </head>
 <body>
 <h1>🔧 JuiceWRLDLE Path Builder</h1>
-<div class="sub">Runs until every single song has an audio path. Auto-saves every 500 calls. Leave the tab open.</div>
+<div class="sub">Runs until every song in songs.json has an audio path. Auto-saves every 500 calls.</div>
 
 <div class="row">
   <label>GitHub PAT:</label>
@@ -50,7 +50,8 @@ const CONCUR     = 12;
 const SAVE_EVERY = 500;
 
 let running    = false;
-let pathMap    = {};
+let pathMap    = {};   // name -> path, includes ALL names from API (not just songs.json)
+let songSet    = null; // Set of names that are actually in songs.json
 let totalSongs = 0;
 let songs      = [];
 let currentSha = '';
@@ -64,9 +65,16 @@ const stopBtn  = document.getElementById('stopBtn');
 function appendLog(cls, msg) {
   const s = document.createElement('span');
   s.className = cls;
-  s.textContent = msg + '\n';
+  s.textContent = (msg || '') + '\n';
   logEl.appendChild(s);
   logEl.scrollTop = logEl.scrollHeight;
+}
+
+// Count how many songs.json entries have a path in pathMap
+function coveredCount() {
+  let n = 0;
+  for (const name of songSet) { if (pathMap[name]) n++; }
+  return n;
 }
 
 function updateBar(covered) {
@@ -79,8 +87,7 @@ async function getSha(pat) {
   const r = await fetch('https://api.github.com/repos/' + REPO + '/contents/songs.json', {
     headers: { 'Authorization': 'token ' + pat }
   });
-  const d = await r.json();
-  return d.sha;
+  return (await r.json()).sha;
 }
 
 async function commitSongs(pat, label) {
@@ -103,7 +110,7 @@ async function commitSongs(pat, label) {
     });
     const result = await r.json();
     if (r.ok) {
-      appendLog('ok', '[saved] ' + withPaths + '/' + songs.length + ' paths (' + merged + ' new this save)');
+      appendLog('ok', '[saved] ' + withPaths + '/' + songs.length + ' songs.json entries have paths (' + merged + ' new)');
       return withPaths;
     } else {
       appendLog('err', '[save failed] ' + JSON.stringify(result).slice(0, 150));
@@ -126,16 +133,18 @@ async function startBuild() {
     const r = await fetch('./songs.json');
     songs = await r.json();
     totalSongs = songs.length;
+    songSet = new Set(songs.map(s => s.name));
     let already = 0;
     for (const s of songs) { if (s.path) { pathMap[s.name] = s.path; already++; } }
-    appendLog('ok', totalSongs + ' songs. Already have paths: ' + already);
+    appendLog('ok', totalSongs + ' songs in songs.json. Already have paths: ' + already);
     updateBar(already);
   } catch(e) { appendLog('err', 'Could not load songs.json: ' + e.message); btn.disabled=false; return; }
 
   try { currentSha = await getSha(pat); }
   catch(e) { appendLog('err', 'PAT error: ' + e.message); btn.disabled=false; return; }
 
-  appendLog('info', '\n=== Running until 100% coverage. Auto-saves every ' + SAVE_EVERY + ' calls. ===\n');
+  appendLog('info', '\n=== Running until all ' + totalSongs + ' songs.json entries have paths. ===');
+  appendLog('info', '(API may return songs not in songs.json — those are ignored for completion check.)\n');
 
   let callsMade = 0, errors = 0, saveCounter = 0;
 
@@ -158,19 +167,20 @@ async function startBuild() {
     for (let i = 0; i < CONCUR; i++) batch.push(oneCall());
     await Promise.all(batch);
 
-    const covered = Object.keys(pathMap).length;
+    // Count only songs that are actually in songs.json
+    const covered = coveredCount();
     const pct = updateBar(covered);
-    statusEl.textContent = covered + '/' + totalSongs + ' songs (' + pct + '%) | ' + callsMade + ' calls | ' + errors + ' errors';
+    statusEl.textContent = covered + '/' + totalSongs + ' songs.json entries covered (' + pct + '%) | ' + callsMade + ' calls | ' + errors + ' errors';
 
     if (callsMade % 200 === 0) {
-      appendLog('ok', '[' + callsMade + ' calls] ' + covered + '/' + totalSongs + ' (' + pct + '%)');
+      appendLog('ok', '[' + callsMade + ' calls] ' + covered + '/' + totalSongs + ' covered (' + pct + '%)');
     }
 
     if (saveCounter >= SAVE_EVERY) {
       saveCounter = 0;
       appendLog('info', '\n[auto-save at ' + callsMade + ' calls]');
       await commitSongs(pat, 'auto-save at ' + callsMade + ' calls');
-      appendLog('');
+      appendLog('', '');
     }
 
     if (covered >= totalSongs) {
@@ -186,7 +196,7 @@ async function startBuild() {
   appendLog('info', '\n=== Final save ===');
   const final = await commitSongs(pat, 'final');
   updateBar(final);
-  statusEl.textContent = final === totalSongs ? '✓ 100% complete!' : final + '/' + totalSongs + ' saved.';
+  statusEl.textContent = final >= totalSongs ? '✓ 100% complete!' : final + '/' + totalSongs + ' saved.';
   btn.textContent = '▶ Run Again';
   btn.disabled = false;
 }
