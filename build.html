@@ -27,7 +27,7 @@
 </head>
 <body>
 <h1>🔧 JuiceWRLDLE Path Builder</h1>
-<div class="sub">Runs until every song has an audio path (or stalls). Auto-saves progress to GitHub every 500 calls.</div>
+<div class="sub">Runs until every single song has an audio path. Auto-saves every 500 calls. Leave the tab open.</div>
 
 <div class="row">
   <label>GitHub PAT:</label>
@@ -44,23 +44,22 @@
 </div>
 
 <script>
-const PROXY       = 'https://juicewrld-proxy.epichackermanmilk.workers.dev';
-const REPO        = 'epichackermanmilk/juicewrldle';
-const CONCUR      = 12;       // parallel requests
-const STALL_LIMIT = 600;      // stop if no new path found in this many consecutive calls
-const SAVE_EVERY  = 500;      // auto-save to GitHub every N calls
+const PROXY      = 'https://juicewrld-proxy.epichackermanmilk.workers.dev';
+const REPO       = 'epichackermanmilk/juicewrldle';
+const CONCUR     = 12;
+const SAVE_EVERY = 500;
 
-let running   = false;
-let pathMap   = {};
+let running    = false;
+let pathMap    = {};
 let totalSongs = 0;
-let songs     = [];
+let songs      = [];
 let currentSha = '';
 
-const logEl   = document.getElementById('log');
-const fill    = document.getElementById('fill');
+const logEl    = document.getElementById('log');
+const fill     = document.getElementById('fill');
 const statusEl = document.getElementById('status');
-const btn     = document.getElementById('btn');
-const stopBtn = document.getElementById('stopBtn');
+const btn      = document.getElementById('btn');
+const stopBtn  = document.getElementById('stopBtn');
 
 function appendLog(cls, msg) {
   const s = document.createElement('span');
@@ -85,13 +84,11 @@ async function getSha(pat) {
 }
 
 async function commitSongs(pat, label) {
-  // Merge pathMap into songs array
   let merged = 0;
   for (const s of songs) {
     if (pathMap[s.name] && !s.path) { s.path = pathMap[s.name]; merged++; }
   }
   const withPaths = songs.filter(s => s.path).length;
-
   try {
     currentSha = await getSha(pat);
     const jsonStr = JSON.stringify(songs, null, 2);
@@ -99,27 +96,19 @@ async function commitSongs(pat, label) {
     let b64 = '';
     for (let i = 0; i < bytes.length; i += 8192) b64 += String.fromCharCode(...bytes.slice(i, i + 8192));
     b64 = btoa(b64);
-
     const r = await fetch('https://api.github.com/repos/' + REPO + '/contents/songs.json', {
       method: 'PUT',
       headers: { 'Authorization': 'token ' + pat, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        message: 'build: ' + label + ' — ' + withPaths + '/' + songs.length + ' paths',
-        content: b64,
-        sha: currentSha
-      })
+      body: JSON.stringify({ message: 'build: ' + label + ' — ' + withPaths + '/' + songs.length + ' paths', content: b64, sha: currentSha })
     });
     const result = await r.json();
     if (r.ok) {
-      currentSha = result.content.sha;
-      appendLog('ok', '[saved] ' + withPaths + '/' + songs.length + ' paths committed (' + merged + ' new this save)');
+      appendLog('ok', '[saved] ' + withPaths + '/' + songs.length + ' paths (' + merged + ' new this save)');
       return withPaths;
     } else {
-      appendLog('err', '[save failed] ' + JSON.stringify(result).slice(0, 120));
+      appendLog('err', '[save failed] ' + JSON.stringify(result).slice(0, 150));
     }
-  } catch(e) {
-    appendLog('err', '[save error] ' + e.message);
-  }
+  } catch(e) { appendLog('err', '[save error] ' + e.message); }
   return songs.filter(s => s.path).length;
 }
 
@@ -132,7 +121,6 @@ async function startBuild() {
   running = true;
   logEl.innerHTML = '';
 
-  // Load songs.json
   appendLog('info', '=== Loading songs.json ===');
   try {
     const r = await fetch('./songs.json');
@@ -142,18 +130,14 @@ async function startBuild() {
     for (const s of songs) { if (s.path) { pathMap[s.name] = s.path; already++; } }
     appendLog('ok', totalSongs + ' songs. Already have paths: ' + already);
     updateBar(already);
-  } catch(e) {
-    appendLog('err', 'Could not load songs.json: ' + e.message); btn.disabled=false; return;
-  }
+  } catch(e) { appendLog('err', 'Could not load songs.json: ' + e.message); btn.disabled=false; return; }
 
-  // Get initial SHA
   try { currentSha = await getSha(pat); }
   catch(e) { appendLog('err', 'PAT error: ' + e.message); btn.disabled=false; return; }
 
-  appendLog('info', '\n=== Collecting paths (runs until complete or stalled) ===');
-  appendLog('', 'Auto-saves every ' + SAVE_EVERY + ' calls. Stall limit: ' + STALL_LIMIT + ' calls without new path.');
+  appendLog('info', '\n=== Running until 100% coverage. Auto-saves every ' + SAVE_EVERY + ' calls. ===\n');
 
-  let callsMade = 0, errors = 0, callsSinceNew = 0, saveCounter = 0;
+  let callsMade = 0, errors = 0, saveCounter = 0;
 
   async function oneCall() {
     if (!running) return;
@@ -161,34 +145,27 @@ async function startBuild() {
     saveCounter++;
     try {
       const r = await fetch(PROXY + '/radio/random/');
-      if (!r.ok) { errors++; callsSinceNew++; return; }
+      if (!r.ok) { errors++; return; }
       const d = await r.json();
       const p = d.path || (d.song && d.song.path) || null;
       const n = (d.song && d.song.name) || d.name || null;
-      if (p && n && !pathMap[n]) {
-        pathMap[n] = p;
-        callsSinceNew = 0;  // reset stall counter
-      } else {
-        callsSinceNew++;
-      }
-    } catch(e) { errors++; callsSinceNew++; }
+      if (p && n && !pathMap[n]) pathMap[n] = p;
+    } catch(e) { errors++; }
   }
 
   while (running) {
-    // Run a batch
     const batch = [];
     for (let i = 0; i < CONCUR; i++) batch.push(oneCall());
     await Promise.all(batch);
 
     const covered = Object.keys(pathMap).length;
     const pct = updateBar(covered);
-    statusEl.textContent = covered + '/' + totalSongs + ' songs (' + pct + '%) | ' + callsMade + ' calls | stall: ' + callsSinceNew + '/' + STALL_LIMIT;
+    statusEl.textContent = covered + '/' + totalSongs + ' songs (' + pct + '%) | ' + callsMade + ' calls | ' + errors + ' errors';
 
     if (callsMade % 200 === 0) {
-      appendLog('ok', '[' + callsMade + ' calls] ' + covered + '/' + totalSongs + ' (' + pct + '%) | stall counter: ' + callsSinceNew);
+      appendLog('ok', '[' + callsMade + ' calls] ' + covered + '/' + totalSongs + ' (' + pct + '%)');
     }
 
-    // Auto-save every SAVE_EVERY calls
     if (saveCounter >= SAVE_EVERY) {
       saveCounter = 0;
       appendLog('info', '\n[auto-save at ' + callsMade + ' calls]');
@@ -196,20 +173,9 @@ async function startBuild() {
       appendLog('');
     }
 
-    // Done!
     if (covered >= totalSongs) {
-      appendLog('info', '\n🎉 100% COVERAGE REACHED after ' + callsMade + ' calls!');
       running = false;
-      break;
-    }
-
-    // Stalled
-    if (callsSinceNew >= STALL_LIMIT) {
-      const missing = songs.filter(s => !pathMap[s.name]).map(s => s.name);
-      appendLog('warn', '\nStalled — no new path in ' + STALL_LIMIT + ' calls. ' + missing.length + ' songs still missing:');
-      appendLog('warn', missing.slice(0, 20).join(', ') + (missing.length > 20 ? '... (+' + (missing.length-20) + ' more)' : ''));
-      appendLog('warn', 'These songs may not appear in /radio/random/. Saving what we have.');
-      running = false;
+      appendLog('info', '\n🎉 100% COVERAGE! All ' + totalSongs + ' songs have paths after ' + callsMade + ' calls.');
       break;
     }
 
@@ -220,8 +186,7 @@ async function startBuild() {
   appendLog('info', '\n=== Final save ===');
   const final = await commitSongs(pat, 'final');
   updateBar(final);
-  statusEl.textContent = 'Complete — ' + final + '/' + totalSongs + ' songs covered.';
-  appendLog('ok', '\nDone! The game will now serve deterministic daily songs for all covered entries.');
+  statusEl.textContent = final === totalSongs ? '✓ 100% complete!' : final + '/' + totalSongs + ' saved.';
   btn.textContent = '▶ Run Again';
   btn.disabled = false;
 }
