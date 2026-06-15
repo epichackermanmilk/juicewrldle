@@ -9,7 +9,7 @@
   h1{color:#c084fc;margin-bottom:4px}
   .sub{color:#a78bfa;font-size:.85rem;margin-bottom:16px}
   #log{background:rgba(14,4,30,.9);border:1px solid rgba(167,139,250,.25);border-radius:10px;padding:14px;
-       font-size:.78rem;height:360px;overflow-y:auto;white-space:pre-wrap;word-break:break-all;margin-top:12px}
+       font-size:.78rem;height:380px;overflow-y:auto;white-space:pre-wrap;word-break:break-all;margin-top:12px}
   .ok{color:#4ade80}.warn{color:#fde68a}.err{color:#f87171}.info{color:#c084fc}
   #bar-wrap{background:rgba(14,4,30,.9);border:1px solid rgba(167,139,250,.25);border-radius:10px;padding:10px;margin-bottom:12px}
   #bar{height:20px;background:rgba(168,85,247,.15);border-radius:6px;overflow:hidden}
@@ -27,7 +27,7 @@
 </head>
 <body>
 <h1>🔧 JuiceWRLDLE Path Builder</h1>
-<div class="sub">Runs until every song in songs.json has an audio path. Auto-saves every 500 calls.</div>
+<div class="sub">Probes for fast bulk endpoints first, then falls back to parallel /radio/random/.</div>
 
 <div class="row">
   <label>GitHub PAT:</label>
@@ -46,12 +46,12 @@
 <script>
 const PROXY      = 'https://juicewrld-proxy.epichackermanmilk.workers.dev';
 const REPO       = 'epichackermanmilk/juicewrldle';
-const CONCUR     = 12;
-const SAVE_EVERY = 500;
+const CONCUR     = 40;       // parallel /radio/random/ calls
+const SAVE_EVERY = 300;
 
 let running    = false;
-let pathMap    = {};   // name -> path, includes ALL names from API (not just songs.json)
-let songSet    = null; // Set of names that are actually in songs.json
+let pathMap    = {};
+let songSet    = null;
 let totalSongs = 0;
 let songs      = [];
 let currentSha = '';
@@ -65,12 +65,11 @@ const stopBtn  = document.getElementById('stopBtn');
 function appendLog(cls, msg) {
   const s = document.createElement('span');
   s.className = cls;
-  s.textContent = (msg || '') + '\n';
+  s.textContent = (msg !== undefined ? msg : '') + '\n';
   logEl.appendChild(s);
   logEl.scrollTop = logEl.scrollHeight;
 }
 
-// Count how many songs.json entries have a path in pathMap
 function coveredCount() {
   let n = 0;
   for (const name of songSet) { if (pathMap[name]) n++; }
@@ -110,7 +109,7 @@ async function commitSongs(pat, label) {
     });
     const result = await r.json();
     if (r.ok) {
-      appendLog('ok', '[saved] ' + withPaths + '/' + songs.length + ' songs.json entries have paths (' + merged + ' new)');
+      appendLog('ok', '[saved] ' + withPaths + '/' + songs.length + ' have paths (' + merged + ' new)');
       return withPaths;
     } else {
       appendLog('err', '[save failed] ' + JSON.stringify(result).slice(0, 150));
@@ -119,39 +118,86 @@ async function commitSongs(pat, label) {
   return songs.filter(s => s.path).length;
 }
 
-async function startBuild() {
-  const pat = document.getElementById('pat').value.trim();
-  if (!pat || !pat.startsWith('ghp_')) { alert('Enter a valid GitHub PAT (starts with ghp_)'); return; }
+// ── PHASE 0: probe for bulk endpoints ────────────────────────────────────────
+async function probeBulkEndpoints() {
+  appendLog('info', '=== Probing for bulk endpoints ===');
 
-  btn.disabled = true;
-  stopBtn.disabled = false;
-  running = true;
-  logEl.innerHTML = '';
+  // Try /songs/ with page_size and various field params that might expose path
+  const probes = [
+    '/songs/?page_size=10',
+    '/songs/?page_size=10&include_path=true',
+    '/songs/?page_size=10&fields=name,path',
+    '/songs/?page_size=10&format=json',
+    '/radio/?page_size=10',
+    '/radio/?count=10',
+    '/radio/list/?page_size=10',
+  ];
 
-  appendLog('info', '=== Loading songs.json ===');
-  try {
-    const r = await fetch('./songs.json');
-    songs = await r.json();
-    totalSongs = songs.length;
-    songSet = new Set(songs.map(s => s.name));
-    let already = 0;
-    for (const s of songs) { if (s.path) { pathMap[s.name] = s.path; already++; } }
-    appendLog('ok', totalSongs + ' songs in songs.json. Already have paths: ' + already);
-    updateBar(already);
-  } catch(e) { appendLog('err', 'Could not load songs.json: ' + e.message); btn.disabled=false; return; }
+  for (const endpoint of probes) {
+    try {
+      const r = await fetch(PROXY + endpoint);
+      if (!r.ok) { appendLog('warn', endpoint + ' → HTTP ' + r.status); continue; }
+      const d = await r.json();
+      // Check if results array items have a path field
+      const results = d.results || d.songs || d.data || (Array.isArray(d) ? d : null);
+      if (results && results.length > 0) {
+        const first = results[0];
+        const hasPath = !!(first.path || first.audio_path || first.audio_url || first.file_path);
+        const keys = Object.keys(first).join(', ');
+        appendLog(hasPath ? 'ok' : 'warn',
+          endpoint + ' → ' + results.length + ' results | path: ' + (hasPath ? 'YES ✓' : 'no') + ' | keys: ' + keys);
+        if (hasPath) return { endpoint, pathField: first.path ? 'path' : first.audio_path ? 'audio_path' : 'audio_url', total: d.count || d.total || null };
+      } else {
+        appendLog('warn', endpoint + ' → no results array | keys: ' + Object.keys(d).join(', '));
+      }
+    } catch(e) {
+      appendLog('err', endpoint + ' → ' + e.message);
+    }
+  }
+  return null;
+}
 
-  try { currentSha = await getSha(pat); }
-  catch(e) { appendLog('err', 'PAT error: ' + e.message); btn.disabled=false; return; }
+// ── PHASE 1: paginate bulk endpoint ──────────────────────────────────────────
+async function collectViaPagination(endpoint, pathField) {
+  appendLog('info', '\n=== Fast path: paginating ' + endpoint + ' ===');
+  let page = 1, collected = 0;
+  const pageSize = 100;
+  const base = endpoint.split('?')[0];
 
-  appendLog('info', '\n=== Running until all ' + totalSongs + ' songs.json entries have paths. ===');
-  appendLog('info', '(API may return songs not in songs.json — those are ignored for completion check.)\n');
+  while (running) {
+    try {
+      const r = await fetch(PROXY + base + '?page_size=' + pageSize + '&page=' + page);
+      if (!r.ok) { appendLog('err', 'Page ' + page + ' HTTP ' + r.status); break; }
+      const d = await r.json();
+      const results = d.results || d.songs || d.data || (Array.isArray(d) ? d : []);
+      if (!results.length) break;
 
+      for (const item of results) {
+        const p = item[pathField] || item.path || item.audio_path || item.audio_url || null;
+        const n = item.name || (item.song && item.song.name) || null;
+        if (p && n && !pathMap[n]) { pathMap[n] = p; collected++; }
+      }
+
+      const covered = coveredCount();
+      updateBar(covered);
+      appendLog('ok', 'Page ' + page + ': ' + results.length + ' items | songs.json covered: ' + covered + '/' + totalSongs);
+
+      if (!d.next && results.length < pageSize) break;
+      page++;
+      await new Promise(r => setTimeout(r, 100));
+    } catch(e) { appendLog('err', 'Pagination error: ' + e.message); break; }
+  }
+  return coveredCount();
+}
+
+// ── PHASE 2: /radio/random/ fallback ─────────────────────────────────────────
+async function collectViaRandom(pat) {
+  appendLog('info', '\n=== Fallback: parallel /radio/random/ (concurrency=' + CONCUR + ') ===\n');
   let callsMade = 0, errors = 0, saveCounter = 0;
 
   async function oneCall() {
     if (!running) return;
-    callsMade++;
-    saveCounter++;
+    callsMade++; saveCounter++;
     try {
       const r = await fetch(PROXY + '/radio/random/');
       if (!r.ok) { errors++; return; }
@@ -167,14 +213,11 @@ async function startBuild() {
     for (let i = 0; i < CONCUR; i++) batch.push(oneCall());
     await Promise.all(batch);
 
-    // Count only songs that are actually in songs.json
     const covered = coveredCount();
-    const pct = updateBar(covered);
-    statusEl.textContent = covered + '/' + totalSongs + ' songs.json entries covered (' + pct + '%) | ' + callsMade + ' calls | ' + errors + ' errors';
+    updateBar(covered);
+    statusEl.textContent = covered + '/' + totalSongs + ' covered (' + Math.round(covered/totalSongs*100) + '%) | ' + callsMade + ' calls | ' + errors + ' errors';
 
-    if (callsMade % 200 === 0) {
-      appendLog('ok', '[' + callsMade + ' calls] ' + covered + '/' + totalSongs + ' covered (' + pct + '%)');
-    }
+    if (callsMade % 200 === 0) appendLog('ok', '[' + callsMade + ' calls] ' + covered + '/' + totalSongs + ' covered');
 
     if (saveCounter >= SAVE_EVERY) {
       saveCounter = 0;
@@ -184,12 +227,55 @@ async function startBuild() {
     }
 
     if (covered >= totalSongs) {
+      appendLog('info', '\n🎉 100% after ' + callsMade + ' /radio/random/ calls!');
       running = false;
-      appendLog('info', '\n🎉 100% COVERAGE! All ' + totalSongs + ' songs have paths after ' + callsMade + ' calls.');
       break;
     }
 
-    await new Promise(r => setTimeout(r, 20));
+    await new Promise(r => setTimeout(r, 15));
+  }
+}
+
+async function startBuild() {
+  const pat = document.getElementById('pat').value.trim();
+  if (!pat || !pat.startsWith('ghp_')) { alert('Enter a valid GitHub PAT (starts with ghp_)'); return; }
+
+  btn.disabled = true;
+  stopBtn.disabled = false;
+  running = true;
+  logEl.innerHTML = '';
+
+  // Load songs.json
+  appendLog('info', '=== Loading songs.json ===');
+  try {
+    const r = await fetch('./songs.json');
+    songs = await r.json();
+    totalSongs = songs.length;
+    songSet = new Set(songs.map(s => s.name));
+    let already = 0;
+    for (const s of songs) { if (s.path) { pathMap[s.name] = s.path; already++; } }
+    appendLog('ok', totalSongs + ' songs. Already have paths: ' + already);
+    updateBar(already);
+  } catch(e) { appendLog('err', 'Could not load songs.json: ' + e.message); btn.disabled=false; return; }
+
+  try { currentSha = await getSha(pat); }
+  catch(e) { appendLog('err', 'PAT error: ' + e.message); btn.disabled=false; return; }
+
+  // Try bulk endpoints first
+  const bulk = await probeBulkEndpoints();
+
+  if (bulk) {
+    appendLog('ok', '\n✓ Bulk endpoint found: ' + bulk.endpoint);
+    await collectViaPagination(bulk.endpoint, bulk.pathField);
+    const covered = coveredCount();
+    appendLog('ok', 'Pagination done. Covered: ' + covered + '/' + totalSongs);
+    if (covered < totalSongs) {
+      appendLog('warn', (totalSongs - covered) + ' songs still missing — switching to /radio/random/ for remainder.');
+      await collectViaRandom(pat);
+    }
+  } else {
+    appendLog('warn', '\nNo bulk endpoint with paths found — using /radio/random/ only.');
+    await collectViaRandom(pat);
   }
 
   stopBtn.disabled = true;
