@@ -1128,6 +1128,7 @@ function moveAcHi(d) {
 //  GUESS LOGIC
 // ══════════════════════════════════════════════
 function checkGuess(input, songData) {
+  // ── Direct match: input vs every known name/title of the answer ──
   const raws = [
     songData.song && songData.song.name,
     songData.title,
@@ -1140,7 +1141,29 @@ function checkGuess(input, songData) {
   }
   const g  = normalize(input);
   const gs = normalize(stripVersion(input));
-  return [...candidates].some(c => c===g || c===gs);
+  if ([...candidates].some(c => c === g || c === gs)) return true;
+
+  // ── songs.json cross-entry match ──────────────────────────────────────────
+  // The API may return a specific version name like "Hide (feat. Seezyn) [v1]"
+  // while the user picks the canonical "Hide" from the dropdown.
+  // Both resolve to the same songs.json entry → should be correct.
+  if (!acCache || !acCache.length) return false;
+
+  function findEntry(str) {
+    const n  = normalize(str);
+    const ns = normalize(stripVersion(str));
+    return acCache.find(s =>
+      normalize(s.name) === n || normalize(s.name) === ns ||
+      (s.titles || []).some(t => normalize(t) === n || normalize(t) === ns)
+    );
+  }
+
+  const answerName  = (songData.song && songData.song.name) || songData.title || '';
+  const guessEntry  = findEntry(input);
+  const answerEntry = findEntry(answerName);
+
+  // Same songs.json entry → correct
+  return !!(guessEntry && answerEntry && guessEntry.name === answerEntry.name);
 }
 function getClueValue(key, songData) {
   const name = ((songData.song && songData.song.name) || songData.title || '').trim();
