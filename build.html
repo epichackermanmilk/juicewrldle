@@ -27,7 +27,7 @@
 </head>
 <body>
 <h1>🔧 JuiceWRLDLE Path Builder</h1>
-<div class="sub">Fetches every /songs/{id}/ endpoint and matches paths to songs.json by name.</div>
+<div class="sub">Scans every song ID, matches via normalized name + titles array. Falls back to /radio/random/.</div>
 
 <div class="row">
   <label>GitHub PAT:</label>
@@ -46,23 +46,44 @@
 <script>
 const PROXY      = 'https://juicewrld-proxy.epichackermanmilk.workers.dev';
 const REPO       = 'epichackermanmilk/juicewrldle';
-const MAX_ID     = 2700;   // scan IDs 1–2700 to cover all songs + buffer
-const CONCUR     = 40;     // parallel requests
-const SAVE_EVERY = 300;    // auto-save every N IDs processed
+const MAX_ID     = 2700;
+const CONCUR     = 40;
+const SAVE_EVERY = 300;
 
 let running    = false;
-let pathMap    = {};
-let songSet    = null;
+let pathMap    = {};   // canonical name -> path
+let lookupMap  = {};   // normalized string -> canonical name (built from songs.json name + titles)
 let totalSongs = 0;
 let songs      = [];
 let currentSha = '';
-let hasPathsInApi = null;  // discovered on first response
 
 const logEl    = document.getElementById('log');
 const fill     = document.getElementById('fill');
 const statusEl = document.getElementById('status');
 const btn      = document.getElementById('btn');
 const stopBtn  = document.getElementById('stopBtn');
+
+function norm(s) {
+  return String(s || '')
+    .toLowerCase()
+    .replace(/[''\u2018\u2019]/g, "'")
+    .replace(/[""\u201c\u201d]/g, '"')
+    .replace(/\s*\(v\d+[^)]*\)\s*$/i, '')  // strip version suffix e.g. "(v2)"
+    .replace(/\s*\[v\d+[^\]]*\]\s*$/i, '')
+    .replace(/[^a-z0-9 ']/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function findCanonical(apiName) {
+  // Try exact normalized match first
+  const n = norm(apiName);
+  if (lookupMap[n]) return lookupMap[n];
+  // Try stripping trailing parenthetical entirely
+  const stripped = n.replace(/\s*\([^)]*\)\s*$/, '').trim();
+  if (lookupMap[stripped]) return lookupMap[stripped];
+  return null;
+}
 
 function appendLog(cls, msg) {
   const s = document.createElement('span');
@@ -73,9 +94,7 @@ function appendLog(cls, msg) {
 }
 
 function coveredCount() {
-  let n = 0;
-  for (const name of songSet) { if (pathMap[name]) n++; }
-  return n;
+  return songs.filter(s => pathMap[s.name]).length;
 }
 
 function updateBar(covered) {
@@ -99,8 +118,7 @@ async function commitSongs(pat, label) {
   const withPaths = songs.filter(s => s.path).length;
   try {
     currentSha = await getSha(pat);
-    const jsonStr = JSON.stringify(songs, null, 2);
-    const bytes = new TextEncoder().encode(jsonStr);
+    const bytes = new TextEncoder().encode(JSON.stringify(songs, null, 2));
     let b64 = '';
     for (let i = 0; i < bytes.length; i += 8192) b64 += String.fromCharCode(...bytes.slice(i, i + 8192));
     b64 = btoa(b64);
@@ -110,154 +128,149 @@ async function commitSongs(pat, label) {
       body: JSON.stringify({ message: 'build: ' + label + ' — ' + withPaths + '/' + songs.length + ' paths', content: b64, sha: currentSha })
     });
     const result = await r.json();
-    if (r.ok) {
-      appendLog('ok', '[saved] ' + withPaths + '/' + songs.length + ' songs have paths (' + merged + ' new)');
-      return withPaths;
-    } else {
-      appendLog('err', '[save failed] ' + JSON.stringify(result).slice(0, 150));
-    }
+    if (r.ok) { appendLog('ok', '[saved] ' + withPaths + '/' + songs.length + ' have paths (' + merged + ' new)'); return withPaths; }
+    else appendLog('err', '[save failed] ' + JSON.stringify(result).slice(0, 150));
   } catch(e) { appendLog('err', '[save error] ' + e.message); }
   return songs.filter(s => s.path).length;
-}
-
-async function fetchSongId(id) {
-  try {
-    const r = await fetch(PROXY + '/songs/' + id + '/');
-    if (!r.ok) return null;
-    const d = await r.json();
-    const node = (d.song && typeof d.song === 'object') ? d.song : d;
-    const name = node.name || d.name || null;
-    const path = d.path || d.audio_path || d.audio_url || d.file_path || d.stream_url ||
-                 d.download_url || d.media_url ||
-                 (d.song && (d.song.path || d.song.audio_path || d.song.audio_url)) || null;
-
-    // Log what the API actually returns on first call
-    if (hasPathsInApi === null) {
-      hasPathsInApi = !!path;
-      appendLog(path ? 'ok' : 'warn',
-        'ID 1 sample — name: "' + name + '" | path field: ' + (path || 'NOT PRESENT') +
-        ' | all keys: ' + Object.keys(d).join(', '));
-      if (!path) {
-        appendLog('warn', 'No path in /songs/{id}/ — will match names to songs.json only.');
-        appendLog('warn', 'You will still need /radio/random/ for paths. Starting that after ID scan...\n');
-      } else {
-        appendLog('ok', 'Path field exists! Collecting all paths via ID scan.\n');
-      }
-    }
-
-    return { name, path };
-  } catch(e) { return null; }
 }
 
 async function startBuild() {
   const pat = document.getElementById('pat').value.trim();
   if (!pat || !pat.startsWith('ghp_')) { alert('Enter a valid GitHub PAT (starts with ghp_)'); return; }
-
-  btn.disabled = true;
-  stopBtn.disabled = false;
-  running = true;
-  logEl.innerHTML = '';
+  btn.disabled = true; stopBtn.disabled = false; running = true; logEl.innerHTML = '';
 
   appendLog('info', '=== Loading songs.json ===');
   try {
     const r = await fetch('./songs.json');
     songs = await r.json();
     totalSongs = songs.length;
-    songSet = new Set(songs.map(s => s.name));
-    let already = 0;
-    for (const s of songs) { if (s.path) { pathMap[s.name] = s.path; already++; } }
-    appendLog('ok', totalSongs + ' songs. Already have paths: ' + already);
+
+    // Build lookup map: every normalized name/title -> canonical name
+    for (const s of songs) {
+      lookupMap[norm(s.name)] = s.name;
+      if (Array.isArray(s.titles)) {
+        for (const t of s.titles) lookupMap[norm(t)] = s.name;
+      }
+      if (s.path) pathMap[s.name] = s.path;
+    }
+    const already = coveredCount();
+    appendLog('ok', totalSongs + ' songs, ' + Object.keys(lookupMap).length + ' lookup keys. Already have paths: ' + already);
+    appendLog('info', 'Sample lookup keys: ' + Object.keys(lookupMap).slice(0,5).join(' | '));
     updateBar(already);
-  } catch(e) { appendLog('err', 'Could not load songs.json: ' + e.message); btn.disabled=false; return; }
+  } catch(e) { appendLog('err', 'songs.json load failed: ' + e.message); btn.disabled=false; return; }
 
   try { currentSha = await getSha(pat); }
   catch(e) { appendLog('err', 'PAT error: ' + e.message); btn.disabled=false; return; }
 
-  appendLog('info', '\n=== Scanning /songs/1/ through /songs/' + MAX_ID + '/ (' + CONCUR + ' parallel) ===\n');
+  // ── Phase 1: scan /songs/1/ to /songs/MAX_ID/ ──
+  appendLog('info', '\n=== Phase 1: Scanning IDs 1–' + MAX_ID + ' (' + CONCUR + ' parallel) ===');
+  appendLog('info', 'First response will show what fields /songs/{id}/ actually returns.\n');
 
-  let processed = 0, matched = 0, saveCounter = 0, errors = 0;
-  const ids = Array.from({ length: MAX_ID }, (_, i) => i + 1);
+  let processed = 0, newPaths = 0, misses = 0, saveCounter = 0;
+  let firstLogged = false;
+  const unmatchedSample = [];
 
-  // Process IDs in parallel batches
-  for (let i = 0; i < ids.length && running; i += CONCUR) {
-    const batch = ids.slice(i, i + CONCUR).map(async (id) => {
-      const result = await fetchSongId(id);
-      processed++;
-      saveCounter++;
-      if (!result) { errors++; return; }
-      const { name, path } = result;
-      if (name && path && !pathMap[name]) { pathMap[name] = path; matched++; }
-      else if (name && !path && songSet.has(name) && !pathMap[name]) {
-        // No path from ID endpoint, but we confirmed the name exists — log it
-      }
-    });
+  for (let i = 1; i <= MAX_ID && running; i += CONCUR) {
+    const batch = [];
+    for (let id = i; id < i + CONCUR && id <= MAX_ID; id++) {
+      batch.push((async (id) => {
+        try {
+          const r = await fetch(PROXY + '/songs/' + id + '/');
+          if (!r.ok) return;
+          const d = await r.json();
+          const node = (d.song && typeof d.song === 'object') ? d.song : d;
+          const apiName = node.name || d.name || null;
+          const path = d.path || d.audio_path || d.audio_url || d.file_path ||
+                       d.stream_url || d.download_url || d.media_url ||
+                       (d.song && (d.song.path || d.song.audio_path || d.song.audio_url)) || null;
 
+          // Log first response in detail
+          if (!firstLogged && apiName) {
+            firstLogged = true;
+            appendLog(path ? 'ok' : 'warn',
+              'ID ' + id + ': name="' + apiName + '" path=' + (path || 'NONE') +
+              ' | keys: ' + Object.keys(d).join(', '));
+          }
+
+          if (!apiName) return;
+
+          if (path) {
+            // Has path — find canonical name
+            const canonical = findCanonical(apiName) || apiName;
+            if (!pathMap[canonical]) { pathMap[canonical] = path; newPaths++; }
+          } else {
+            // No path — check if name matches songs.json (for diagnostic)
+            const canonical = findCanonical(apiName);
+            if (!canonical && unmatchedSample.length < 10) unmatchedSample.push(apiName);
+            else if (!canonical) misses++;
+          }
+        } catch(e) {}
+        processed++;
+        saveCounter++;
+      })(id));
+    }
     await Promise.all(batch);
 
     const covered = coveredCount();
     updateBar(covered);
-    statusEl.textContent = 'ID scan: ' + processed + '/' + MAX_ID + ' | matched: ' + matched + ' | songs.json covered: ' + covered + '/' + totalSongs;
-
-    if (Math.floor(processed / 200) > Math.floor((processed - CONCUR) / 200)) {
-      appendLog('ok', '[ID ' + processed + '] matched: ' + matched + ' | songs.json covered: ' + covered + '/' + totalSongs);
+    statusEl.textContent = 'ID scan: ' + processed + '/' + MAX_ID + ' | new paths: ' + newPaths + ' | covered: ' + covered + '/' + totalSongs;
+    if (processed % 400 === 0 || processed === MAX_ID) {
+      appendLog('ok', '[ID ' + processed + '] new paths: ' + newPaths + ' | covered: ' + covered + '/' + totalSongs);
     }
-
-    if (saveCounter >= SAVE_EVERY) {
+    if (saveCounter >= SAVE_EVERY && newPaths > 0) {
       saveCounter = 0;
-      appendLog('info', '\n[auto-save at ID ' + processed + ']');
+      appendLog('info', '\n[auto-save]');
       await commitSongs(pat, 'ID scan at ' + processed);
-      appendLog('', '');
     }
-
     await new Promise(r => setTimeout(r, 10));
   }
 
-  const coveredAfterScan = coveredCount();
-  appendLog('info', '\nID scan complete. Covered: ' + coveredAfterScan + '/' + totalSongs);
+  // Show diagnostic for unmatched names
+  if (unmatchedSample.length > 0) {
+    appendLog('warn', '\nSample API names with no songs.json match (first 10):');
+    unmatchedSample.forEach(n => appendLog('warn', '  "' + n + '" → norm: "' + norm(n) + '"'));
+  }
 
-  // If IDs had no paths OR didn't cover everything, fall back to /radio/random/
-  if (coveredAfterScan < totalSongs) {
-    const remaining = totalSongs - coveredAfterScan;
-    appendLog('warn', remaining + ' songs still missing paths — switching to /radio/random/ for remainder.');
-    appendLog('info', '=== /radio/random/ fallback (concurrency=' + CONCUR + ') ===\n');
+  const coveredAfter1 = coveredCount();
+  appendLog('info', '\nPhase 1 done. Covered: ' + coveredAfter1 + '/' + totalSongs + ' | paths found in ID scan: ' + newPaths);
 
-    let callsMade = 0, errors2 = 0, saveCounter2 = 0;
+  // ── Phase 2: /radio/random/ for remainder ──
+  if (coveredAfter1 < totalSongs) {
+    appendLog('warn', '\n' + (totalSongs - coveredAfter1) + ' songs still need paths.');
+    appendLog('info', '=== Phase 2: /radio/random/ (' + CONCUR + ' parallel) ===\n');
+    // Show which songs are still missing
+    const missing = songs.filter(s => !pathMap[s.name]).map(s => s.name);
+    appendLog('info', 'Missing: ' + missing.slice(0, 8).join(', ') + (missing.length > 8 ? '... (+' + (missing.length - 8) + ' more)' : ''));
 
+    let calls = 0, errs = 0, sc2 = 0, radioNew = 0;
     while (running) {
       const batch = Array.from({ length: CONCUR }, async () => {
         if (!running) return;
-        callsMade++; saveCounter2++;
+        calls++; sc2++;
         try {
           const r = await fetch(PROXY + '/radio/random/');
-          if (!r.ok) { errors2++; return; }
+          if (!r.ok) { errs++; return; }
           const d = await r.json();
           const p = d.path || (d.song && d.song.path) || null;
-          const n = (d.song && d.song.name) || d.name || null;
-          if (p && n && !pathMap[n]) pathMap[n] = p;
-        } catch(e) { errors2++; }
+          const apiName = (d.song && d.song.name) || d.name || null;
+          if (!p || !apiName) return;
+          const canonical = findCanonical(apiName) || apiName;
+          if (!pathMap[canonical]) { pathMap[canonical] = p; radioNew++; }
+        } catch(e) { errs++; }
       });
-
       await Promise.all(batch);
 
       const covered = coveredCount();
       updateBar(covered);
-      statusEl.textContent = covered + '/' + totalSongs + ' covered | ' + callsMade + ' calls | ' + errors2 + ' errors';
-
-      if (callsMade % 200 === 0) appendLog('ok', '[' + callsMade + ' calls] ' + covered + '/' + totalSongs + ' covered');
-
-      if (saveCounter2 >= SAVE_EVERY) {
-        saveCounter2 = 0;
-        appendLog('info', '\n[auto-save at ' + callsMade + ' calls]');
-        await commitSongs(pat, 'radio fallback at ' + callsMade + ' calls');
+      statusEl.textContent = covered + '/' + totalSongs + ' covered | ' + calls + ' radio calls | ' + errs + ' errors';
+      if (calls % 500 === 0) appendLog('ok', '[' + calls + ' calls] ' + covered + '/' + totalSongs + ' | new this phase: ' + radioNew);
+      if (sc2 >= SAVE_EVERY) {
+        sc2 = 0;
+        appendLog('info', '\n[auto-save at ' + calls + ' calls]');
+        await commitSongs(pat, 'radio at ' + calls + ' calls');
         appendLog('', '');
       }
-
-      if (covered >= totalSongs) {
-        appendLog('info', '\n🎉 100% coverage after ' + callsMade + ' /radio/random/ calls!');
-        running = false;
-        break;
-      }
-
+      if (covered >= totalSongs) { running = false; appendLog('info', '\n🎉 100% after ' + calls + ' radio calls!'); break; }
       await new Promise(r => setTimeout(r, 15));
     }
   }
@@ -267,14 +280,12 @@ async function startBuild() {
   const final = await commitSongs(pat, 'final');
   updateBar(final);
   statusEl.textContent = final >= totalSongs ? '✓ 100% complete!' : final + '/' + totalSongs + ' saved.';
-  btn.textContent = '▶ Run Again';
-  btn.disabled = false;
+  btn.textContent = '▶ Run Again'; btn.disabled = false;
 }
 
 function stopBuild() {
-  running = false;
-  stopBtn.disabled = true;
-  appendLog('warn', 'Stopping after current batch...');
+  running = false; stopBtn.disabled = true;
+  appendLog('warn', 'Stopping...');
 }
 </script>
 </body>
