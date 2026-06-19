@@ -8,7 +8,19 @@
   <meta property="og:title" content="JuiceWRLDLE">
   <meta property="og:description" content="Guess the daily Juice WRLD song from a short audio clip.">
   <meta property="og:url" content="https://juicewrldle.cc">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎵</text></svg>">
+  <link rel="icon" type="image/x-icon" href="/favicon.ico">
+  <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+  <link rel="manifest" href="/site.webmanifest">
+  <!-- Google Analytics -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-J6FGBQKQ4D"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-J6FGBQKQ4D');
+  </script>
   <style>
     :root {
       --bg: #06000f;
@@ -461,9 +473,79 @@
       .result-meta { grid-template-columns:1fr; }
       .hist-days-grid { grid-template-columns:repeat(6,1fr); }
     }
+
+    /* ── FEEDBACK ── */
+    #feedbackBtn {
+      position: fixed; bottom: 20px; right: 20px; z-index: 200;
+      background: rgba(168,85,247,.25); border: 1px solid rgba(168,85,247,.5);
+      color: #c084fc; padding: 10px 16px; border-radius: 50px;
+      cursor: pointer; font-family: inherit; font-size: .85rem; font-weight: 600;
+      backdrop-filter: blur(8px); box-shadow: 0 4px 20px rgba(0,0,0,.4);
+      transition: background .2s, transform .15s;
+      display: flex; align-items: center; gap: 6px;
+    }
+    #feedbackBtn:hover { background: rgba(168,85,247,.4); transform: translateY(-2px); }
+    #feedbackOverlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,.6);
+      backdrop-filter: blur(6px); z-index: 300;
+      display: flex; align-items: center; justify-content: center;
+      opacity: 0; pointer-events: none; transition: opacity .2s;
+    }
+    #feedbackOverlay.open { opacity: 1; pointer-events: all; }
+    #feedbackModal {
+      background: rgba(14,4,30,.97); border: 1px solid rgba(167,139,250,.3);
+      border-radius: 16px; padding: 28px; width: min(480px, 92vw);
+      box-shadow: 0 20px 60px rgba(0,0,0,.6);
+    }
+    #feedbackModal h2 { color: #c084fc; font-size: 1.15rem; margin-bottom: 6px; }
+    #feedbackModal p  { color: #a78bfa; font-size: .82rem; margin-bottom: 18px; }
+    .fb-label { color: #c4b5fd; font-size: .8rem; margin-bottom: 5px; display: block; }
+    .fb-select, .fb-input, .fb-textarea {
+      width: 100%; background: rgba(139,92,246,.07);
+      border: 1px solid rgba(167,139,250,.25); color: #f3e8ff;
+      border-radius: 8px; font-family: inherit; font-size: .88rem;
+      padding: 9px 12px; margin-bottom: 14px; box-sizing: border-box;
+    }
+    .fb-textarea { height: 110px; resize: vertical; }
+    .fb-select option { background: #1a0533; }
+    .fb-row { display: flex; gap: 10px; }
+    .fb-btn {
+      flex: 1; padding: 10px; border-radius: 8px; border: none;
+      font-family: inherit; font-size: .9rem; font-weight: 600; cursor: pointer;
+    }
+    .fb-btn-cancel { background: rgba(255,255,255,.07); color: #a78bfa; }
+    .fb-btn-submit { background: rgba(168,85,247,.35); color: #e9d5ff; border: 1px solid rgba(168,85,247,.5); }
+    .fb-btn-submit:hover { background: rgba(168,85,247,.55); }
+    .fb-btn-submit:disabled { opacity: .45; cursor: not-allowed; }
+    #fbStatus { text-align: center; font-size: .83rem; min-height: 20px; margin-top: 6px; }
   </style>
 </head>
 <body>
+
+<!-- Feedback button + modal -->
+<button id="feedbackBtn" onclick="openFeedback()">💬 Feedback</button>
+<div id="feedbackOverlay" onclick="closeFeedbackIfBg(event)">
+  <div id="feedbackModal">
+    <h2>💬 Send Feedback</h2>
+    <p>Bug report, song suggestion, or just want to say something? Drop it here.</p>
+    <label class="fb-label">Type</label>
+    <select id="fbType" class="fb-select">
+      <option value="bug">🐛 Bug / Something broken</option>
+      <option value="song">🎵 Wrong song / guess issue</option>
+      <option value="suggestion">💡 Suggestion</option>
+      <option value="other">💬 Other</option>
+    </select>
+    <label class="fb-label">Message</label>
+    <textarea id="fbMessage" class="fb-textarea" placeholder="Describe the issue or idea..."></textarea>
+    <label class="fb-label">Email (optional — only if you want a reply)</label>
+    <input id="fbEmail" type="email" class="fb-input" placeholder="you@example.com">
+    <div class="fb-row">
+      <button class="fb-btn fb-btn-cancel" onclick="closeFeedback()">Cancel</button>
+      <button class="fb-btn fb-btn-submit" id="fbSubmit" onclick="submitFeedback()">Send →</button>
+    </div>
+    <div id="fbStatus"></div>
+  </div>
+</div>
 
 <div class="bg-canvas">
   <div class="bg-orb bg-orb-1"></div>
@@ -1198,6 +1280,7 @@ function revealNextHint() {
   state.hintsRevealed = [...(state.hintsRevealed||[]), next];
   const val = song ? getClueValue(next, song) : '?';
   toast(`💡 ${CLUE_LABELS[next]}: ${val || '?'}`);
+  track('hint_revealed', { hint_type: next, song_name: song ? song.title : 'unknown', guesses_made: state.guesses.length });
   saveGameState(currentDate, state);
   render();
 }
@@ -1373,16 +1456,30 @@ function doGuess() {
   state.playCount   = 0;
   state.hintsUnlocked = (state.hintsUnlocked||0) + 1;
 
+  const _era = (song.song && song.song.era) || 'unknown';
+  const _cat = (song.song && song.song.category) || 'unknown';
+
+  // Track every guess attempt
+  track('guess_made', {
+    song_name:    song.title,
+    guess_text:   val,
+    guess_number: guessNum,
+    correct:      correct,
+    song_era:     _era
+  });
+
   if (correct) {
     state.done = true;
     state.won  = true;
     recordResult(true, guessNum);
     toast('🎉 Correct!');
+    track('game_won', { song_name: song.title, guesses_needed: guessNum, song_era: _era, song_category: _cat });
   } else if (state.guesses.length >= MAX_GUESSES) {
     state.done = true;
     state.won  = false;
     recordResult(false, 0);
     toast('💀 Better luck tomorrow!');
+    track('game_lost', { song_name: song.title, song_era: _era, song_category: _cat, last_guess: val });
   } else {
     toast('Wrong! A hint is now unlocked — or keep guessing.');
   }
@@ -1393,14 +1490,23 @@ function doGuess() {
 
 function doSkip() {
   if (!state || state.done) return;
+  const skipNum = state.guesses.length + 1;
   state.guesses.push({ text:'', correct:false, skipped:true });
   state.playCount     = 0;
   state.hintsUnlocked = (state.hintsUnlocked||0) + 1;
+
+  track('guess_skipped', { song_name: song ? song.title : 'unknown', skip_number: skipNum });
 
   if (state.guesses.length >= MAX_GUESSES) {
     state.done = true;
     state.won  = false;
     recordResult(false, 0);
+    track('game_lost', {
+      song_name:    song ? song.title : 'unknown',
+      song_era:     (song && song.song && song.song.era) || 'unknown',
+      song_category:(song && song.song && song.song.category) || 'unknown',
+      last_guess:   'skipped'
+    });
   }
 
   saveGameState(currentDate, state);
@@ -1409,6 +1515,11 @@ function doSkip() {
 
 function doGiveUp() {
   if (!state || state.done) return;
+  track('game_given_up', {
+    song_name:    song ? song.title : 'unknown',
+    guesses_made: state.guesses.length,
+    song_era:     (song && song.song && song.song.era) || 'unknown'
+  });
   state.done         = true;
   state.won          = false;
   state.hintsRevealed = [...CLUE_KEYS]; // reveal everything
@@ -1623,6 +1734,16 @@ async function playDay(dateKey) {
 
     render();
 
+    // Track game start (fresh sessions only)
+    if (!saved || !saved.guesses || saved.guesses.length === 0) {
+      track('game_start', {
+        song_name:     song.title,
+        song_era:      (song.song && song.song.era)      || 'unknown',
+        song_category: (song.song && song.song.category) || 'unknown',
+        is_history:    isHistoryMode
+      });
+    }
+
     // Preload audio (only if game isn't done)
     if (!state.done && song.path) {
       const proxyUrl  = AUDIO_URL(song.path);
@@ -1649,6 +1770,7 @@ async function playDay(dateKey) {
         if (!audioBlocked) {
           audioBlocked = true;
           document.getElementById('blockerBanner').classList.remove('hidden');
+          track('audio_error', { song_name: song ? song.title : 'unknown', error_stage: 'both_failed' });
         }
       });
       audio.load();
@@ -1741,6 +1863,76 @@ function spawnNines() {
 // ══════════════════════════════════════════════
 spawnNines();
 playDay(getTodayKey());
+
+// ══════════════════════════════════════════════
+//  ANALYTICS
+// ══════════════════════════════════════════════
+function track(event, params) {
+  try { if (typeof gtag === 'function') gtag('event', event, params || {}); } catch(e) {}
+}
+
+// ══════════════════════════════════════════════
+//  FEEDBACK
+// ══════════════════════════════════════════════
+// Replace YOUR_FORMSPREE_ID below after signing up at formspree.io (free).
+// 1. Go to https://formspree.io → New Form → copy the form ID (8 chars after /f/)
+// 2. Replace YOUR_FORMSPREE_ID with it, e.g. "xyzabcde"
+const FORMSPREE_ID = 'YOUR_FORMSPREE_ID';
+
+function openFeedback() {
+  document.getElementById('feedbackOverlay').classList.add('open');
+  document.getElementById('fbStatus').textContent = '';
+  document.getElementById('fbStatus').style.color = '';
+  document.getElementById('fbSubmit').disabled = false;
+  track('feedback_opened');
+}
+function closeFeedback() {
+  document.getElementById('feedbackOverlay').classList.remove('open');
+}
+function closeFeedbackIfBg(e) {
+  if (e.target === document.getElementById('feedbackOverlay')) closeFeedback();
+}
+
+async function submitFeedback() {
+  const type    = document.getElementById('fbType').value;
+  const message = document.getElementById('fbMessage').value.trim();
+  const email   = document.getElementById('fbEmail').value.trim();
+  const status  = document.getElementById('fbStatus');
+  const submitBtn = document.getElementById('fbSubmit');
+
+  if (!message) { status.style.color = '#f87171'; status.textContent = 'Please write a message first.'; return; }
+
+  submitBtn.disabled = true;
+  status.style.color = '#a78bfa';
+  status.textContent = 'Sending…';
+
+  // Include current song context automatically
+  const context = song ? `Song: ${song.title} | Era: ${(song.song && song.song.era) || '?'} | Date: ${currentDate}` : '';
+
+  try {
+    const r = await fetch(`https://formspree.io/f/${FORMSPREE_ID}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({ type, message, email: email || '(not provided)', context })
+    });
+    if (r.ok) {
+      status.style.color = '#4ade80';
+      status.textContent = '✓ Sent — thanks for the feedback!';
+      document.getElementById('fbMessage').value = '';
+      document.getElementById('fbEmail').value = '';
+      track('feedback_submitted', { feedback_type: type });
+      setTimeout(closeFeedback, 2000);
+    } else {
+      status.style.color = '#f87171';
+      status.textContent = 'Something went wrong. Try again.';
+      submitBtn.disabled = false;
+    }
+  } catch(e) {
+    status.style.color = '#f87171';
+    status.textContent = 'Could not send — check your connection.';
+    submitBtn.disabled = false;
+  }
+}
 </script>
 </body>
 </html>
