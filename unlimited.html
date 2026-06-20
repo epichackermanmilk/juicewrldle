@@ -935,6 +935,8 @@ async function doSignIn() {
   closeModal('authModal');
   updateAuthBtn();
   toast('👋 Signed in!');
+  // Pull remote best streak into local on sign-in
+  pullRemoteStreak();
 }
 
 async function doSignUp() {
@@ -1021,6 +1023,17 @@ async function loadLeaderboard() {
     }).join('') + `</div>`;
 }
 
+async function pullRemoteStreak() {
+  if (!sb || !currentUser) return;
+  const { data } = await sb.from('profiles').select('unlimited_best').eq('id', currentUser.id).single();
+  if (data && data.unlimited_best > streak.best) {
+    streak.best = data.unlimited_best;
+    saveStreak();
+    renderStreak();
+    console.log('[JW] pullRemoteStreak: restored best to', data.unlimited_best);
+  }
+}
+
 async function syncStreakToSupabase() {
   if (!sb)          { console.warn('[JW] syncStreak: sb is null — Supabase not initialized'); return; }
   if (!currentUser) { console.warn('[JW] syncStreak: no currentUser — not signed in'); return; }
@@ -1032,18 +1045,27 @@ async function syncStreakToSupabase() {
     username = prof?.username || 'unknown';
   }
 
+  // Fetch existing row first — never downgrade the best streak
+  const { data: existing } = await sb.from('profiles').select('id,username,unlimited_best').eq('id', currentUser.id).single();
+  const remoteBest = existing?.unlimited_best ?? 0;
+  const safeBest   = Math.max(streak.best, remoteBest);
+
+  // If remote has a higher best (e.g. after local cache clear), pull it into local
+  if (remoteBest > streak.best) {
+    streak.best = remoteBest;
+    saveStreak();
+    renderStreak();
+    console.log('[JW] pulled higher remote best (' + remoteBest + ') into local');
+  }
+
   const payload = {
     id:               currentUser.id,
     username,
     unlimited_streak: streak.current,
-    unlimited_best:   streak.best,
+    unlimited_best:   safeBest,
     updated_at:       new Date().toISOString()
   };
-  console.log('[JW] syncStreak uid:', currentUser.id, 'payload:', payload);
-
-  // First check if row exists
-  const { data: existing } = await sb.from('profiles').select('id,username,unlimited_best').eq('id', currentUser.id).single();
-  console.log('[JW] existing profile row:', existing);
+  console.log('[JW] syncStreak uid:', currentUser.id, 'safeBest:', safeBest, 'payload:', payload);
 
   const { data, error } = await sb.from('profiles').upsert(payload, { onConflict: 'id' }).select();
   if (error) {
@@ -1080,7 +1102,11 @@ renderStreak();
 // Check existing auth session
 if (sb) {
   sb.auth.getSession().then(({ data }) => {
-    if (data?.session?.user) { currentUser = data.session.user; updateAuthBtn(); }
+    if (data?.session?.user) {
+      currentUser = data.session.user;
+      updateAuthBtn();
+      pullRemoteStreak();
+    }
   });
   sb.auth.onAuthStateChange((_, session) => {
     currentUser = session?.user || null;
