@@ -1,0 +1,1063 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JuiceWRLDLE — Unlimited Mode</title>
+  <meta name="description" content="Unlimited Juice WRLD song guessing — play as many as you want, build your streak.">
+  <link rel="icon" type="image/x-icon" href="/favicon.ico">
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+  <!-- Google Analytics -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-J6FGBQKQ4D"></script>
+  <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-J6FGBQKQ4D');</script>
+  <!-- Supabase -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      --bg: #06000f; --purple1: #6d28d9; --purple2: #7c3aed; --purple3: #c084fc;
+      --purple4: #a855f7; --accent: #f0abfc; --text1: #f3e8ff; --text2: #c4b5fd;
+      --text3: #a78bfa; --card: rgba(255,255,255,.04); --border: rgba(167,139,250,.18);
+      --hover: rgba(167,139,250,.08); --success: #4ade80; --error: #f87171;
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    html,body{height:100%;background:var(--bg);color:var(--text1);font-family:'Segoe UI',system-ui,sans-serif;overflow-x:hidden;}
+    /* BG ORBS */
+    .bg-canvas{position:fixed;inset:0;z-index:0;overflow:hidden;pointer-events:none;}
+    .bg-orb{position:absolute;border-radius:50%;filter:blur(80px);opacity:.35;}
+    .bg-orb-1{width:600px;height:600px;background:radial-gradient(circle,#6d28d9,transparent 70%);top:-10%;left:-10%;animation:orbFloat1 18s ease-in-out infinite;}
+    .bg-orb-2{width:500px;height:500px;background:radial-gradient(circle,#a21caf,transparent 70%);bottom:-10%;right:-5%;animation:orbFloat2 22s ease-in-out infinite;}
+    @keyframes orbFloat1{0%,100%{transform:translate(0,0)}50%{transform:translate(4%,6%)}}
+    @keyframes orbFloat2{0%,100%{transform:translate(0,0)}50%{transform:translate(-3%,4%)}}
+
+    /* LAYOUT */
+    .page{position:relative;z-index:1;min-height:100vh;display:flex;flex-direction:column;}
+    header{padding:14px 20px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);background:rgba(6,0,15,.7);backdrop-filter:blur(12px);position:sticky;top:0;z-index:50;}
+    .header-logo{display:flex;align-items:center;gap:10px;text-decoration:none;}
+    .header-logo-text{font-size:1.15rem;font-weight:800;background:linear-gradient(135deg,#e879f9,#a855f7,#60a5fa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+    .header-badge{background:rgba(168,85,247,.2);border:1px solid rgba(168,85,247,.4);color:#c084fc;padding:3px 10px;border-radius:20px;font-size:.72rem;font-weight:700;letter-spacing:.05em;}
+    .header-right{display:flex;align-items:center;gap:10px;}
+    .btn{padding:8px 16px;border-radius:8px;border:none;cursor:pointer;font-family:inherit;font-size:.85rem;font-weight:600;transition:all .2s;}
+    .btn-ghost{background:rgba(255,255,255,.06);color:var(--text2);border:1px solid var(--border);}
+    .btn-ghost:hover{background:rgba(255,255,255,.1);}
+    .btn-primary{background:linear-gradient(135deg,#7c3aed,#a21caf);color:#fff;box-shadow:0 4px 15px rgba(124,58,237,.35);}
+    .btn-primary:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(124,58,237,.5);}
+    .btn-sm{padding:6px 12px;font-size:.8rem;}
+    .btn-success{background:rgba(74,222,128,.15);color:#4ade80;border:1px solid rgba(74,222,128,.3);}
+
+    main{flex:1;display:flex;flex-direction:column;align-items:center;padding:20px 16px 60px;gap:16px;}
+
+    /* STREAK BAR */
+    .streak-bar{display:flex;gap:20px;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 24px;width:100%;max-width:600px;}
+    .streak-item{display:flex;flex-direction:column;align-items:center;gap:2px;flex:1;}
+    .streak-label{font-size:.72rem;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;}
+    .streak-val{font-size:1.5rem;font-weight:800;color:var(--purple3);}
+    .streak-divider{width:1px;background:var(--border);}
+
+    /* FILTER PANEL */
+    .filter-wrap{width:100%;max-width:600px;}
+    .filter-toggle{width:100%;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 18px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;color:var(--text2);font-family:inherit;font-size:.88rem;font-weight:600;transition:background .15s;}
+    .filter-toggle:hover{background:var(--hover);}
+    .filter-toggle .arrow{transition:transform .2s;color:var(--text3);}
+    .filter-toggle.open .arrow{transform:rotate(180deg);}
+    .filter-body{background:var(--card);border:1px solid var(--border);border-top:none;border-radius:0 0 12px 12px;padding:16px;display:none;flex-direction:column;gap:14px;}
+    .filter-body.open{display:flex;}
+    .filter-section-label{font-size:.75rem;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px;}
+    .era-grid{display:flex;flex-wrap:wrap;gap:6px;}
+    .era-chip{padding:5px 11px;border-radius:20px;border:1px solid var(--border);background:transparent;color:var(--text2);font-size:.78rem;cursor:pointer;font-family:inherit;transition:all .15s;}
+    .era-chip.active{background:rgba(168,85,247,.25);border-color:rgba(168,85,247,.6);color:var(--purple3);}
+    .cat-row{display:flex;gap:8px;flex-wrap:wrap;}
+    .cat-chip{padding:6px 14px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--text2);font-size:.82rem;cursor:pointer;font-family:inherit;transition:all .15s;}
+    .cat-chip.active{background:rgba(168,85,247,.2);border-color:rgba(168,85,247,.5);color:var(--purple3);}
+    .slider-row{display:flex;align-items:center;gap:12px;}
+    .slider-row label{font-size:.82rem;color:var(--text2);min-width:140px;}
+    .slider-row input[type=range]{flex:1;accent-color:#a855f7;}
+    .slider-val{font-size:.82rem;color:var(--purple3);font-weight:700;min-width:40px;text-align:right;}
+    .filter-footer{display:flex;gap:8px;justify-content:flex-end;border-top:1px solid var(--border);padding-top:12px;}
+    .pool-count{font-size:.78rem;color:var(--text3);align-self:center;flex:1;}
+
+    /* CARD */
+    .card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:24px;width:100%;max-width:600px;}
+
+    /* PLAYER */
+    .player-wrap{display:flex;flex-direction:column;align-items:center;gap:14px;}
+    .waveform-container{position:relative;width:100%;height:56px;border-radius:10px;overflow:hidden;background:rgba(255,255,255,.04);}
+    canvas#waveCanvas{width:100%;height:100%;}
+    .time-bar-wrap{width:100%;height:4px;background:rgba(255,255,255,.08);border-radius:2px;overflow:hidden;}
+    .time-bar{height:100%;background:linear-gradient(90deg,#7c3aed,#a855f7);width:0%;transition:width .1s linear;}
+    .clip-info{font-size:.78rem;color:var(--text3);}
+    .player-controls{display:flex;align-items:center;gap:12px;}
+    .play-btn{width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,#7c3aed,#a21caf);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#fff;font-size:1.3rem;box-shadow:0 4px 20px rgba(124,58,237,.4);transition:transform .15s;}
+    .play-btn:hover{transform:scale(1.06);}
+    .play-btn:disabled{opacity:.4;cursor:not-allowed;transform:none;}
+    .plays-left{font-size:.78rem;color:var(--text3);}
+
+    /* GUESSES */
+    .guess-list{display:flex;flex-direction:column;gap:6px;width:100%;}
+    .guess-row{padding:10px 14px;border-radius:8px;font-size:.88rem;display:flex;align-items:center;gap:8px;font-weight:500;}
+    .guess-row.correct{background:rgba(74,222,128,.12);border:1px solid rgba(74,222,128,.3);color:#4ade80;}
+    .guess-row.wrong{background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.2);color:#f87171;}
+    .guess-row.skipped{background:rgba(255,255,255,.04);border:1px solid var(--border);color:var(--text3);}
+    .guess-row.empty{background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.06);color:rgba(255,255,255,.15);}
+
+    /* INPUT */
+    .input-row{display:flex;gap:8px;position:relative;width:100%;}
+    .guess-input{flex:1;background:rgba(255,255,255,.06);border:1px solid var(--border);border-radius:10px;padding:11px 14px;color:var(--text1);font-family:inherit;font-size:.92rem;outline:none;transition:border-color .15s;}
+    .guess-input:focus{border-color:rgba(167,139,250,.5);}
+    .ac-list{position:absolute;top:calc(100% + 4px);left:0;right:80px;background:#1a0533;border:1px solid rgba(167,139,250,.3);border-radius:10px;max-height:220px;overflow-y:auto;z-index:20;display:none;}
+    .ac-list.open{display:block;}
+    .ac-item{padding:9px 14px;cursor:pointer;font-size:.88rem;color:var(--text2);transition:background .1s;}
+    .ac-item:hover,.ac-item.hi{background:rgba(167,139,250,.15);color:var(--text1);}
+
+    /* ACTION BTNS */
+    .action-row{display:flex;gap:8px;width:100%;justify-content:flex-end;}
+    .btn-skip{background:rgba(255,255,255,.06);color:var(--text3);border:1px solid var(--border);}
+    .btn-giveup{background:rgba(248,113,113,.08);color:#f87171;border:1px solid rgba(248,113,113,.2);}
+
+    /* RESULT */
+    .result-card{text-align:center;padding:28px;}
+    .result-emoji{font-size:2.5rem;margin-bottom:10px;}
+    .result-title{font-size:1.1rem;font-weight:800;margin-bottom:4px;}
+    .result-title.won{color:#4ade80;}
+    .result-title.lost{color:#f87171;}
+    .result-song{font-size:1rem;color:var(--text2);margin-bottom:6px;}
+    .result-streak{font-size:.88rem;margin-bottom:18px;}
+    .result-streak.up{color:#4ade80;}
+    .result-streak.reset{color:#f87171;}
+    .result-actions{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;}
+    .result-img{width:80px;height:80px;border-radius:10px;object-fit:cover;margin:0 auto 12px;display:block;}
+
+    /* HINTS */
+    .hints-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;width:100%;}
+    .hint-box{background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:8px;padding:10px 12px;}
+    .hint-key{font-size:.7rem;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px;}
+    .hint-val{font-size:.88rem;color:var(--text1);font-weight:600;}
+    .hint-val.hidden{color:rgba(255,255,255,.15);}
+
+    /* LEADERBOARD MODAL */
+    .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:200;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s;}
+    .modal-bg.open{opacity:1;pointer-events:all;}
+    .modal{background:rgba(14,4,30,.97);border:1px solid rgba(167,139,250,.3);border-radius:16px;padding:28px;width:min(520px,94vw);max-height:85vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.6);}
+    .modal h2{color:var(--purple3);font-size:1.1rem;margin-bottom:16px;}
+    .lb-tabs{display:flex;gap:4px;margin-bottom:16px;background:rgba(255,255,255,.04);border-radius:8px;padding:4px;}
+    .lb-tab{flex:1;padding:7px;border:none;background:transparent;color:var(--text3);font-family:inherit;font-size:.82rem;font-weight:600;cursor:pointer;border-radius:6px;transition:all .15s;}
+    .lb-tab.active{background:rgba(168,85,247,.25);color:var(--purple3);}
+    .lb-table{width:100%;}
+    .lb-row{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);}
+    .lb-row:last-child{border-bottom:none;}
+    .lb-rank{font-size:.85rem;font-weight:800;color:var(--text3);min-width:24px;}
+    .lb-rank.gold{color:#fbbf24;}
+    .lb-rank.silver{color:#d1d5db;}
+    .lb-rank.bronze{color:#b45309;}
+    .lb-name{flex:1;font-size:.88rem;color:var(--text1);}
+    .lb-score{font-size:.95rem;font-weight:800;color:var(--purple3);}
+    .lb-you{background:rgba(168,85,247,.08);border-radius:6px;padding:0 6px;}
+    .lb-empty{text-align:center;color:var(--text3);font-size:.85rem;padding:20px 0;}
+
+    /* AUTH MODAL */
+    .auth-field{margin-bottom:12px;}
+    .auth-field label{display:block;font-size:.8rem;color:var(--text2);margin-bottom:5px;}
+    .auth-input{width:100%;background:rgba(139,92,246,.07);border:1px solid rgba(167,139,250,.25);color:var(--text1);border-radius:8px;font-family:inherit;font-size:.88rem;padding:9px 12px;box-sizing:border-box;outline:none;}
+    .auth-input:focus{border-color:rgba(167,139,250,.5);}
+    .auth-tabs{display:flex;gap:4px;margin-bottom:18px;background:rgba(255,255,255,.04);border-radius:8px;padding:4px;}
+    .auth-tab{flex:1;padding:7px;border:none;background:transparent;color:var(--text3);font-family:inherit;font-size:.85rem;font-weight:600;cursor:pointer;border-radius:6px;transition:all .15s;}
+    .auth-tab.active{background:rgba(168,85,247,.25);color:var(--purple3);}
+    .auth-err{color:var(--error);font-size:.8rem;margin-top:8px;min-height:18px;}
+    .auth-row{display:flex;gap:8px;justify-content:flex-end;margin-top:16px;}
+
+    /* CONFIRM */
+    #confirmBg{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:300;display:none;align-items:center;justify-content:center;}
+    #confirmBg.show{display:flex;}
+    #confirmBox{background:#1a0533;border:1px solid rgba(167,139,250,.3);border-radius:12px;padding:24px;width:min(320px,90vw);text-align:center;}
+    #confirmMsg{color:var(--text2);font-size:.9rem;margin-bottom:18px;}
+    #confirmBtns{display:flex;gap:10px;justify-content:center;}
+
+    /* TOAST */
+    #toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(20px);background:rgba(30,10,60,.95);border:1px solid rgba(167,139,250,.3);color:var(--text1);padding:10px 20px;border-radius:50px;font-size:.85rem;pointer-events:none;opacity:0;transition:all .25s;z-index:500;white-space:nowrap;}
+    #toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+    /* BLOCKER */
+    .blocker{background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.25);border-radius:10px;padding:12px 16px;color:#f87171;font-size:.83rem;display:none;}
+    .blocker.show{display:block;}
+
+    @media(max-width:480px){
+      .hints-grid{grid-template-columns:1fr;}
+      .streak-bar{padding:10px 14px;}
+      .streak-val{font-size:1.2rem;}
+    }
+  </style>
+</head>
+<body>
+<div class="bg-canvas"><div class="bg-orb bg-orb-1"></div><div class="bg-orb bg-orb-2"></div></div>
+
+<div class="page">
+  <header>
+    <a href="/" class="header-logo">
+      <span class="header-logo-text">JuiceWRLDLE</span>
+      <span class="header-badge">♾ UNLIMITED</span>
+    </a>
+    <div class="header-right">
+      <a href="/" class="btn btn-ghost btn-sm">📅 Daily</a>
+      <button id="lbBtn" class="btn btn-ghost btn-sm" onclick="openModal('lbModal')">🏆 Leaderboard</button>
+      <button id="authBtn" class="btn btn-primary btn-sm" onclick="openAuthModal()">Sign In</button>
+    </div>
+  </header>
+
+  <main>
+    <!-- Streak -->
+    <div class="streak-bar">
+      <div class="streak-item">
+        <span class="streak-label">Current Streak</span>
+        <span class="streak-val" id="streakCurrent">0</span>
+      </div>
+      <div class="streak-divider"></div>
+      <div class="streak-item">
+        <span class="streak-label">Best Streak</span>
+        <span class="streak-val" id="streakBest">0</span>
+      </div>
+      <div class="streak-divider"></div>
+      <div class="streak-item">
+        <span class="streak-label">Songs Played</span>
+        <span class="streak-val" id="streakPlayed">0</span>
+      </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="filter-wrap">
+      <button class="filter-toggle" id="filterToggle" onclick="toggleFilters()">
+        <span>⚙️ Filters &amp; Settings</span>
+        <span class="arrow">▾</span>
+      </button>
+      <div class="filter-body" id="filterBody">
+        <div>
+          <div class="filter-section-label">Era</div>
+          <div class="era-grid" id="eraGrid"></div>
+        </div>
+        <div>
+          <div class="filter-section-label">Category</div>
+          <div class="cat-row" id="catRow">
+            <button class="cat-chip active" data-cat="" onclick="toggleCat(this,'')">All</button>
+            <button class="cat-chip" data-cat="released" onclick="toggleCat(this,'released')">Released</button>
+            <button class="cat-chip" data-cat="unreleased" onclick="toggleCat(this,'unreleased')">Unreleased</button>
+            <button class="cat-chip" data-cat="recording_session" onclick="toggleCat(this,'recording_session')">Sessions</button>
+            <button class="cat-chip" data-cat="unsurfaced" onclick="toggleCat(this,'unsurfaced')">Unsurfaced</button>
+          </div>
+        </div>
+        <div>
+          <div class="filter-section-label">Guesses</div>
+          <div class="slider-row">
+            <label>Max guesses</label>
+            <input type="range" id="sliderGuesses" min="3" max="10" value="7" oninput="settings.maxGuesses=+this.value;document.getElementById('valGuesses').textContent=this.value;">
+            <span class="slider-val" id="valGuesses">7</span>
+          </div>
+        </div>
+        <div>
+          <div class="filter-section-label">Clip Length</div>
+          <div class="slider-row">
+            <label>Starting clip (seconds)</label>
+            <input type="range" id="sliderClip" min="1" max="5" value="1" oninput="settings.startClip=+this.value;document.getElementById('valClip').textContent=this.value+'s';">
+            <span class="slider-val" id="valClip">1s</span>
+          </div>
+        </div>
+        <div class="filter-footer">
+          <span class="pool-count" id="poolCount"></span>
+          <button class="btn btn-ghost btn-sm" onclick="resetFilters()">Reset</button>
+          <button class="btn btn-primary btn-sm" onclick="applyFilters()">Apply &amp; New Song</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Game -->
+    <div class="card" id="gameCard">
+      <div style="text-align:center;padding:30px;color:var(--text3);">
+        <div style="font-size:2rem;margin-bottom:10px">🎵</div>
+        Loading songs…
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- Leaderboard Modal -->
+<div class="modal-bg" id="lbModal" onclick="closeMBg(event,'lbModal')">
+  <div class="modal">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+      <h2>🏆 Leaderboard</h2>
+      <button class="btn btn-ghost btn-sm" onclick="closeModal('lbModal')">✕</button>
+    </div>
+    <div class="lb-tabs">
+      <button class="lb-tab active" onclick="switchLbTab('unlimited',this)">♾ Unlimited Streak</button>
+      <button class="lb-tab" onclick="switchLbTab('daily',this)">📅 Daily Streak</button>
+    </div>
+    <div id="lbContent"><div class="lb-empty">Sign in to see the leaderboard.</div></div>
+  </div>
+</div>
+
+<!-- Auth Modal -->
+<div class="modal-bg" id="authModal" onclick="closeMBg(event,'authModal')">
+  <div class="modal">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+      <h2 id="authTitle">Sign In</h2>
+      <button class="btn btn-ghost btn-sm" onclick="closeModal('authModal')">✕</button>
+    </div>
+    <div class="auth-tabs">
+      <button class="auth-tab active" onclick="switchAuthTab('signin',this)">Sign In</button>
+      <button class="auth-tab" onclick="switchAuthTab('signup',this)">Create Account</button>
+    </div>
+    <div id="authSignin">
+      <div class="auth-field"><label>Email</label><input class="auth-input" id="siEmail" type="email" placeholder="you@example.com"></div>
+      <div class="auth-field"><label>Password</label><input class="auth-input" id="siPass" type="password" placeholder="••••••••"></div>
+      <div class="auth-err" id="siErr"></div>
+      <div class="auth-row">
+        <button class="btn btn-ghost btn-sm" onclick="closeModal('authModal')">Cancel</button>
+        <button class="btn btn-primary btn-sm" onclick="doSignIn()">Sign In →</button>
+      </div>
+    </div>
+    <div id="authSignup" style="display:none;">
+      <div class="auth-field"><label>Username</label><input class="auth-input" id="suUser" type="text" placeholder="JuiceWRLDFan999" maxlength="20"></div>
+      <div class="auth-field"><label>Email</label><input class="auth-input" id="suEmail" type="email" placeholder="you@example.com"></div>
+      <div class="auth-field"><label>Password</label><input class="auth-input" id="suPass" type="password" placeholder="At least 6 characters"></div>
+      <div class="auth-err" id="suErr"></div>
+      <div class="auth-row">
+        <button class="btn btn-ghost btn-sm" onclick="closeModal('authModal')">Cancel</button>
+        <button class="btn btn-primary btn-sm" onclick="doSignUp()">Create Account →</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Confirm -->
+<div id="confirmBg">
+  <div id="confirmBox">
+    <div id="confirmMsg"></div>
+    <div id="confirmBtns">
+      <button class="btn btn-ghost btn-sm" onclick="closeConfirm()">Cancel</button>
+      <button class="btn btn-primary btn-sm" id="confirmOk">OK</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ══════════════════════════════════════════════
+//  CONFIG
+// ══════════════════════════════════════════════
+const SUPABASE_URL      = 'YOUR_SUPABASE_URL'; // replace with your project URL
+const SUPABASE_ANON_KEY = 'sb_publishable_4eXKgvc7QvbzNJ6dQ_butw_DgS5WinA';
+const API_BASE   = 'https://juicewrld-proxy.epichackermanmilk.workers.dev';
+const API_DIRECT = 'https://juicewrldapi.com';
+const IMG_BASE   = 'https://juicewrldapi.com';
+const MAX_PLAYS  = 2;
+
+// Supabase — only init if URL is set
+let sb = null;
+if (SUPABASE_URL && SUPABASE_URL !== 'YOUR_SUPABASE_URL') {
+  try { sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY); } catch(e) {}
+}
+
+// ══════════════════════════════════════════════
+//  STATE
+// ══════════════════════════════════════════════
+let allSongs     = []; // all songs.json entries with paths
+let pool         = []; // filtered playable pool
+let recentIds    = []; // avoid immediate repeats
+let song         = null;
+let state        = null;
+let audio        = null;
+let audioBlocked = false;
+let waveCtx      = null;
+let waveData     = null;
+let acCache      = null;
+let acHi         = -1;
+let currentUser  = null;
+let lbTab        = 'unlimited';
+
+let settings = {
+  eras:       [],   // [] = all
+  category:   '',   // '' = all
+  maxGuesses: 7,
+  startClip:  1,
+};
+
+let streak = { current: 0, best: 0, played: 0 };
+
+const STREAK_KEY  = 'jwdle_unlimited_streak_v1';
+const STATS_KEY   = 'jwdle_unlimited_stats_v1';
+
+const CLUE_KEYS   = ['era','length','producers','category','release_date'];
+const CLUE_LABELS = { era:'Era', length:'Duration', producers:'Producers', category:'Category', release_date:'Release Date' };
+
+function track(ev, p) { try { if (typeof gtag==='function') gtag('event',ev,p||{}); } catch(e){} }
+
+// ══════════════════════════════════════════════
+//  PERSISTENCE
+// ══════════════════════════════════════════════
+function loadStreak() {
+  try { const s = JSON.parse(localStorage.getItem(STREAK_KEY)); if (s) streak = {...streak,...s}; } catch(e) {}
+}
+function saveStreak() {
+  localStorage.setItem(STREAK_KEY, JSON.stringify(streak));
+}
+function renderStreak() {
+  document.getElementById('streakCurrent').textContent = streak.current;
+  document.getElementById('streakBest').textContent    = streak.best;
+  document.getElementById('streakPlayed').textContent  = streak.played;
+}
+
+// ══════════════════════════════════════════════
+//  SONGS + FILTERS
+// ══════════════════════════════════════════════
+async function loadSongs() {
+  const r = await fetch('./songs.json');
+  const data = await r.json();
+  allSongs = data.filter(s => s.path && s.path.trim());
+  buildEraGrid();
+  applyFilters(false);
+}
+
+function buildEraGrid() {
+  const eras = [...new Set(allSongs.filter(s=>s.era).map(s=>s.era))].sort();
+  const grid = document.getElementById('eraGrid');
+  grid.innerHTML = `<button class="era-chip active" data-era="" onclick="toggleEra(this,'')">All</button>` +
+    eras.map(e => `<button class="era-chip" data-era="${e}" onclick="toggleEra(this,'${e.replace(/'/g,"\\'")}')">${e}</button>`).join('');
+}
+
+function toggleEra(btn, era) {
+  if (era === '') {
+    settings.eras = [];
+    document.querySelectorAll('.era-chip').forEach(c => c.classList.toggle('active', c.dataset.era === ''));
+  } else {
+    const allChip = document.querySelector('.era-chip[data-era=""]');
+    allChip && allChip.classList.remove('active');
+    btn.classList.toggle('active');
+    const active = [...document.querySelectorAll('.era-chip.active')].map(c=>c.dataset.era).filter(Boolean);
+    settings.eras = active;
+    if (!active.length) {
+      settings.eras = [];
+      allChip && allChip.classList.add('active');
+    }
+  }
+  updatePoolCount();
+}
+
+function toggleCat(btn, cat) {
+  document.querySelectorAll('.cat-chip').forEach(c => c.classList.remove('active'));
+  btn.classList.add('active');
+  settings.category = cat;
+  updatePoolCount();
+}
+
+function updatePoolCount() {
+  const p = computePool();
+  document.getElementById('poolCount').textContent = p.length + ' songs in pool';
+}
+
+function computePool() {
+  return allSongs.filter(s => {
+    if (settings.eras.length && !settings.eras.includes(s.era)) return false;
+    if (settings.category && !(s.category||'').includes(settings.category)) return false;
+    return true;
+  });
+}
+
+function applyFilters(newSong = true) {
+  pool = computePool();
+  updatePoolCount();
+  if (newSong && pool.length) startNewGame();
+  else if (!pool.length) toast('No songs match these filters — try broadening them.');
+}
+
+function resetFilters() {
+  settings = { eras:[], category:'', maxGuesses:7, startClip:1 };
+  document.getElementById('sliderGuesses').value = 7;
+  document.getElementById('valGuesses').textContent = '7';
+  document.getElementById('sliderClip').value = 1;
+  document.getElementById('valClip').textContent = '1s';
+  document.querySelectorAll('.era-chip').forEach(c => c.classList.toggle('active', c.dataset.era===''));
+  document.querySelectorAll('.cat-chip').forEach(c => c.classList.toggle('active', c.dataset.cat===''));
+  applyFilters(false);
+  updatePoolCount();
+}
+
+function toggleFilters() {
+  const t = document.getElementById('filterToggle');
+  const b = document.getElementById('filterBody');
+  t.classList.toggle('open');
+  b.classList.toggle('open');
+  updatePoolCount();
+}
+
+// ══════════════════════════════════════════════
+//  SONG SELECTION
+// ══════════════════════════════════════════════
+function pickSong() {
+  if (!pool.length) return null;
+  const available = pool.filter(s => !recentIds.includes(s.name));
+  const src = available.length ? available : pool;
+  const pick = src[Math.floor(Math.random() * src.length)];
+  recentIds.push(pick.name);
+  if (recentIds.length > Math.min(20, Math.floor(pool.length / 2))) recentIds.shift();
+  return pick;
+}
+
+// ══════════════════════════════════════════════
+//  AUDIO
+// ══════════════════════════════════════════════
+function AUDIO_URL(path) {
+  return `${API_BASE}/files/download/?path=${encodeURIComponent((path||'').replace(/^\//,''))}`;
+}
+function DIRECT_URL(path) {
+  return `${API_DIRECT}/files/download/?path=${encodeURIComponent((path||'').replace(/^\//,''))}`;
+}
+
+function stopAudio() {
+  if (audio) { try { audio.pause(); } catch(e){} audio = null; }
+  waveCtx = null; waveData = null;
+}
+
+function getClipSec(guessIdx) {
+  const steps = [0, 1, 3, 6, 10, 15, 29];
+  return settings.startClip + (steps[Math.min(guessIdx, steps.length - 1)] || 0);
+}
+
+function setPlayBtnState(playing) {
+  const b = document.getElementById('playBtn');
+  if (b) b.textContent = playing ? '⏹' : '▶';
+}
+
+async function playClip() {
+  if (!song || !state || state.done) return;
+  if (state.playCount >= MAX_PLAYS) { toast(`Max ${MAX_PLAYS} plays per guess`); return; }
+  if (!audio) { toast('Audio not ready yet'); return; }
+
+  const gIdx   = state.guesses.length;
+  const clipSec = getClipSec(gIdx);
+  const startSec = state.startSec || 0;
+
+  audio.currentTime = startSec;
+  setPlayBtnState(true);
+  state.playCount++;
+  render();
+
+  try { await audio.play(); } catch(e) {
+    setPlayBtnState(false);
+    track('audio_error', { song_name: song.name, error: e.message });
+  }
+
+  const stopAt = startSec + clipSec;
+  const onTimeUpdate = () => {
+    const el = document.getElementById('timeBar');
+    if (el) el.style.width = Math.min(100, ((audio.currentTime - startSec) / clipSec) * 100) + '%';
+    if (audio.currentTime >= stopAt) {
+      audio.pause();
+      setPlayBtnState(false);
+      audio.removeEventListener('timeupdate', onTimeUpdate);
+      const el2 = document.getElementById('timeBar');
+      if (el2) el2.style.width = '100%';
+      setTimeout(() => { if (el2) el2.style.width = '0%'; }, 300);
+    }
+  };
+  audio.addEventListener('timeupdate', onTimeUpdate);
+  audio.addEventListener('ended', () => { setPlayBtnState(false); audio.removeEventListener('timeupdate', onTimeUpdate); }, { once: true });
+}
+
+function preloadAudio() {
+  if (!song || !song.path) return;
+  stopAudio();
+  audio = new Audio();
+  audio.preload = 'auto';
+  audio.volume  = 0.8;
+  audio.src     = AUDIO_URL(song.path);
+  audio._triedDirect = false;
+  audio.addEventListener('error', () => {
+    if (!audio._triedDirect) {
+      audio._triedDirect = true;
+      audio.src = DIRECT_URL(song.path);
+      audio.load();
+      return;
+    }
+    audioBlocked = true;
+    const bl = document.getElementById('audioBlocker');
+    if (bl) bl.classList.add('show');
+    track('audio_error', { song_name: song.name, error_stage: 'both_failed' });
+  });
+  audio.load();
+}
+
+// ══════════════════════════════════════════════
+//  AUTOCOMPLETE
+// ══════════════════════════════════════════════
+function normalize(s) {
+  return String(s).toLowerCase().replace(/[''`]/g,"'").replace(/[""]/g,'"').replace(/\s+/g,' ').trim();
+}
+function stripVersion(s) {
+  return s.replace(/\s*\(v\d+[^)]*\)\s*$/i,'').replace(/\s*\[v\d+[^)]*\]\s*$/i,'').trim();
+}
+
+function acSearch(q) {
+  if (!allSongs.length) return [];
+  const nq = normalize(q);
+  return allSongs
+    .filter(s => normalize(s.name).includes(nq) || (s.titles||[]).some(t=>normalize(t).includes(nq)))
+    .slice(0, 8)
+    .map(s => s.name);
+}
+
+function renderAc(items) {
+  const list = document.getElementById('acList');
+  if (!list) return;
+  if (!items.length) { list.classList.remove('open'); list.innerHTML=''; acHi=-1; return; }
+  list.innerHTML = items.map((n,i) => `<div class="ac-item" onclick="pickAc('${n.replace(/'/g,"\\'")}')">${n}</div>`).join('');
+  list.classList.add('open');
+  acHi = -1;
+}
+function hideAc() { const l=document.getElementById('acList'); if(l){l.classList.remove('open');l.innerHTML='';} acHi=-1; }
+function pickAc(name) { const inp=document.getElementById('guessInput'); if(inp) inp.value=name; hideAc(); }
+function moveAcHi(dir) {
+  const items = document.querySelectorAll('.ac-item');
+  if (!items.length) return;
+  items[acHi]?.classList.remove('hi');
+  acHi = (acHi + dir + items.length) % items.length;
+  items[acHi]?.classList.add('hi');
+  items[acHi]?.scrollIntoView({ block:'nearest' });
+}
+
+// ══════════════════════════════════════════════
+//  GUESS LOGIC
+// ══════════════════════════════════════════════
+function checkGuess(input, songEntry) {
+  const candidates = new Set();
+  [songEntry.name, ...(songEntry.titles||[])].filter(Boolean).forEach(r => {
+    candidates.add(normalize(r));
+    candidates.add(normalize(stripVersion(r)));
+  });
+  const g  = normalize(input);
+  const gs = normalize(stripVersion(input));
+  if ([...candidates].some(c => c===g || c===gs)) return true;
+  // cross-entry: if both resolve to same songs.json entry
+  function findEntry(str) {
+    const n=normalize(str), ns=normalize(stripVersion(str));
+    return allSongs.find(s=>normalize(s.name)===n||normalize(s.name)===ns||(s.titles||[]).some(t=>normalize(t)===n||normalize(t)===ns));
+  }
+  const ge = findEntry(input);
+  const ae = findEntry(songEntry.name);
+  return !!(ge && ae && ge.name === ae.name);
+}
+
+function getClueValue(key, s) {
+  switch(key) {
+    case 'era':          return s.era || '?';
+    case 'length':       return s.length || '?';
+    case 'producers':    return s.producers || '?';
+    case 'category':     return s.category || '?';
+    case 'release_date': return s.release_date || '?';
+    default:             return '?';
+  }
+}
+
+// ══════════════════════════════════════════════
+//  GAME FLOW
+// ══════════════════════════════════════════════
+function startNewGame() {
+  stopAudio();
+  audioBlocked = false;
+  const s = pickSong();
+  if (!s) { toast('No songs in pool!'); return; }
+  song = s;
+  state = {
+    guesses: [],
+    done: false,
+    won: false,
+    hintsUnlocked: 0,
+    hintsRevealed: [],
+    playCount: 0,
+    startSec: Math.floor(Math.random() * 30), // random start within song
+  };
+  track('game_start', { song_name: song.name, song_era: song.era||'?', mode: 'unlimited' });
+  preloadAudio();
+  render();
+}
+
+function doGuess() {
+  const inp = document.getElementById('guessInput');
+  if (!inp || !song || !state || state.done) return;
+  const val = inp.value.trim();
+  if (!val) { toast('Type a song name first!'); return; }
+  hideAc();
+  inp.value = '';
+
+  const correct  = checkGuess(val, song);
+  const guessNum = state.guesses.length + 1;
+  state.guesses.push({ text: val, correct, skipped: false });
+  state.playCount   = 0;
+  state.hintsUnlocked = (state.hintsUnlocked||0) + 1;
+
+  track('guess_made', { song_name: song.name, guess_text: val, guess_number: guessNum, correct, mode: 'unlimited' });
+
+  if (correct) {
+    state.done = true;
+    state.won  = true;
+    streak.current++;
+    streak.played++;
+    if (streak.current > streak.best) streak.best = streak.current;
+    saveStreak();
+    syncStreakToSupabase();
+    toast('🎉 Correct!');
+    track('game_won', { song_name: song.name, guesses_needed: guessNum, mode: 'unlimited', streak: streak.current });
+  } else {
+    const prevStreak = streak.current;
+    streak.current = 0;
+    if (state.guesses.length >= settings.maxGuesses) {
+      state.done = true;
+      state.won  = false;
+      streak.played++;
+      saveStreak();
+      syncStreakToSupabase();
+      toast('💀 Better luck next time!');
+      track('game_lost', { song_name: song.name, mode: 'unlimited', streak_lost: prevStreak });
+    } else {
+      saveStreak();
+      toast('Wrong! Streak reset. A hint is unlocked.');
+      track('guess_wrong', { song_name: song.name, guess_number: guessNum, streak_was: prevStreak });
+    }
+  }
+
+  render();
+}
+
+function doSkip() {
+  if (!state || state.done) return;
+  state.guesses.push({ text:'', correct:false, skipped:true });
+  state.playCount   = 0;
+  state.hintsUnlocked = (state.hintsUnlocked||0) + 1;
+  streak.current = 0;
+  saveStreak();
+  track('guess_skipped', { song_name: song?.name, skip_number: state.guesses.length });
+  if (state.guesses.length >= settings.maxGuesses) {
+    state.done = true;
+    state.won  = false;
+    streak.played++;
+    saveStreak();
+    syncStreakToSupabase();
+    toast('💀 Song revealed!');
+  }
+  render();
+}
+
+function doGiveUp() {
+  if (!state || state.done) return;
+  const prev = streak.current;
+  streak.current = 0;
+  streak.played++;
+  state.done = true;
+  state.won  = false;
+  state.hintsRevealed = [...CLUE_KEYS];
+  saveStreak();
+  syncStreakToSupabase();
+  track('game_given_up', { song_name: song?.name, guesses_made: state.guesses.length, streak_was: prev });
+  render();
+}
+
+function revealNextHint() {
+  if (!state) return;
+  const available = (state.hintsUnlocked||0) - (state.hintsRevealed||[]).length;
+  if (available <= 0) { toast('No hints yet — make a guess first!'); return; }
+  const next = CLUE_KEYS.find(k => !(state.hintsRevealed||[]).includes(k));
+  if (!next) { toast('All hints revealed!'); return; }
+  state.hintsRevealed = [...(state.hintsRevealed||[]), next];
+  const val = song ? getClueValue(next, song) : '?';
+  toast(`💡 ${CLUE_LABELS[next]}: ${val}`);
+  track('hint_revealed', { hint_type: next, song_name: song?.name, mode: 'unlimited' });
+  render();
+}
+
+// ══════════════════════════════════════════════
+//  CONFIRM DIALOG
+// ══════════════════════════════════════════════
+function confirm(msg, okLabel, cb) {
+  document.getElementById('confirmMsg').textContent = msg;
+  document.getElementById('confirmOk').textContent  = okLabel;
+  document.getElementById('confirmOk').onclick = () => { closeConfirm(); cb(); };
+  document.getElementById('confirmBg').classList.add('show');
+}
+function closeConfirm() { document.getElementById('confirmBg').classList.remove('show'); }
+
+// ══════════════════════════════════════════════
+//  RENDER
+// ══════════════════════════════════════════════
+function render() {
+  if (!song || !state) return;
+  renderStreak();
+
+  const gIdx    = state.guesses.length;
+  const clipSec = getClipSec(gIdx);
+  const isDone  = state.done;
+  const card    = document.getElementById('gameCard');
+
+  // Build guess rows
+  const rows = [];
+  for (let i = 0; i < settings.maxGuesses; i++) {
+    const g = state.guesses[i];
+    if (!g) {
+      rows.push(`<div class="guess-row empty">${i === gIdx && !isDone ? '…' : '—'}</div>`);
+    } else if (g.skipped) {
+      rows.push(`<div class="guess-row skipped">⏭ Skipped</div>`);
+    } else if (g.correct) {
+      rows.push(`<div class="guess-row correct">✓ ${g.text}</div>`);
+    } else {
+      rows.push(`<div class="guess-row wrong">✗ ${g.text}</div>`);
+    }
+  }
+
+  // Hints
+  const hintsHtml = CLUE_KEYS.map(k => {
+    const revealed = isDone || (state.hintsRevealed||[]).includes(k);
+    const val = revealed ? getClueValue(k, song) : '?';
+    return `<div class="hint-box"><div class="hint-key">${CLUE_LABELS[k]}</div><div class="hint-val ${revealed?'':'hidden'}">${val||'?'}</div></div>`;
+  }).join('');
+
+  if (isDone) {
+    // Result card
+    const imgHtml = song.image_url
+      ? `<img class="result-img" src="${IMG_BASE + song.image_url}" alt="${song.name}" onerror="this.style.display='none'">`
+      : '';
+    const streakHtml = state.won
+      ? `<div class="result-streak up">🔥 Streak: ${streak.current}</div>`
+      : `<div class="result-streak reset">💔 Streak reset. Best: ${streak.best}</div>`;
+
+    card.innerHTML = `
+      <div class="result-card">
+        ${imgHtml}
+        <div class="result-emoji">${state.won ? '🎉' : '💀'}</div>
+        <div class="result-title ${state.won?'won':'lost'}">${state.won ? `Correct in ${gIdx} guess${gIdx!==1?'es':''}!` : 'The song was…'}</div>
+        <div class="result-song">${song.name}${song.era ? ' · ' + song.era : ''}</div>
+        ${streakHtml}
+        <div class="result-actions">
+          <button class="btn btn-primary" onclick="startNewGame()">▶ Play Again</button>
+          <button class="btn btn-ghost" onclick="openModal('lbModal');loadLeaderboard()">🏆 Leaderboard</button>
+        </div>
+      </div>
+      <hr style="border:none;border-top:1px solid var(--border);margin:16px 0;">
+      <div class="guess-list">${rows.join('')}</div>
+      <hr style="border:none;border-top:1px solid var(--border);margin:16px 0;">
+      <div style="margin-bottom:8px;font-size:.8rem;color:var(--text3);">Hints</div>
+      <div class="hints-grid">${hintsHtml}</div>
+    `;
+    return;
+  }
+
+  // Active game
+  const playUsed = state.playCount >= MAX_PLAYS;
+  const imgHtml = song.image_url && (state.hintsRevealed||[]).includes('image')
+    ? `<img style="width:60px;height:60px;border-radius:8px;object-fit:cover;" src="${IMG_BASE+song.image_url}" alt="">`
+    : '';
+
+  card.innerHTML = `
+    <div class="player-wrap">
+      ${imgHtml}
+      <div class="waveform-container"><canvas id="waveCanvas"></canvas></div>
+      <div class="time-bar-wrap"><div class="time-bar" id="timeBar"></div></div>
+      <div class="clip-info">Clip: ${clipSec}s · Guess ${gIdx+1} of ${settings.maxGuesses}</div>
+      <div class="player-controls">
+        <button class="play-btn" id="playBtn" onclick="playClip()" ${audioBlocked?'disabled':''}>▶</button>
+        <span class="plays-left">${playUsed ? 'No plays left this guess' : `${MAX_PLAYS - state.playCount} play${MAX_PLAYS - state.playCount !== 1 ? 's' : ''} left`}</span>
+      </div>
+      <div class="blocker ${audioBlocked?'show':''}" id="audioBlocker">⚠️ Audio failed to load. The API may be down.</div>
+    </div>
+    <hr style="border:none;border-top:1px solid var(--border);margin:16px 0;">
+    <div class="guess-list">${rows.join('')}</div>
+    <hr style="border:none;border-top:1px solid var(--border);margin:16px 0;">
+    <div class="input-row">
+      <input class="guess-input" id="guessInput" type="text" placeholder="Guess the song…" autocomplete="off">
+      <button class="btn btn-primary" onclick="doGuess()">→</button>
+      <div class="ac-list" id="acList"></div>
+    </div>
+    <div class="action-row" style="margin-top:10px;">
+      <button class="btn btn-sm btn-ghost" onclick="revealNextHint()">💡 Hint ${(state.hintsRevealed||[]).length+1}/${CLUE_KEYS.length}</button>
+      <button class="btn btn-sm btn-skip" onclick="confirm('Skip this turn?','Skip',doSkip)">⏭ Skip</button>
+      <button class="btn btn-sm btn-giveup" onclick="confirm('Give up and reveal?','Give Up',doGiveUp)">🏳 Give Up</button>
+    </div>
+    <hr style="border:none;border-top:1px solid var(--border);margin:16px 0;">
+    <div class="hints-grid">${hintsHtml}</div>
+  `;
+
+  // Wire input
+  const inp = document.getElementById('guessInput');
+  if (inp) {
+    inp.addEventListener('input', () => renderAc(inp.value.trim().length >= 1 ? acSearch(inp.value.trim()) : []));
+    inp.addEventListener('keydown', e => {
+      if      (e.key==='ArrowDown') { e.preventDefault(); moveAcHi(1); }
+      else if (e.key==='ArrowUp')   { e.preventDefault(); moveAcHi(-1); }
+      else if (e.key==='Enter')     { e.preventDefault(); const hi=document.querySelector('.ac-item.hi'); hi ? (pickAc(hi.textContent), doGuess()) : doGuess(); }
+      else if (e.key==='Escape')    { hideAc(); }
+    });
+    inp.focus();
+  }
+}
+
+// ══════════════════════════════════════════════
+//  MODALS
+// ══════════════════════════════════════════════
+function openModal(id) { document.getElementById(id)?.classList.add('open'); }
+function closeModal(id) { document.getElementById(id)?.classList.remove('open'); }
+function closeMBg(e, id) { if (e.target === document.getElementById(id)) closeModal(id); }
+
+// ══════════════════════════════════════════════
+//  AUTH
+// ══════════════════════════════════════════════
+function openAuthModal() {
+  if (currentUser) { doSignOut(); return; }
+  openModal('authModal');
+}
+
+function switchAuthTab(tab, btn) {
+  document.querySelectorAll('.auth-tab').forEach(t=>t.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('authSignin').style.display  = tab==='signin'  ? 'block' : 'none';
+  document.getElementById('authSignup').style.display  = tab==='signup'  ? 'block' : 'none';
+  document.getElementById('authTitle').textContent     = tab==='signin'  ? 'Sign In' : 'Create Account';
+}
+
+async function doSignIn() {
+  if (!sb) { document.getElementById('siErr').textContent = 'Auth not configured yet.'; return; }
+  const email = document.getElementById('siEmail').value.trim();
+  const pass  = document.getElementById('siPass').value;
+  document.getElementById('siErr').textContent = '';
+  if (!email || !pass) { document.getElementById('siErr').textContent = 'Fill in all fields.'; return; }
+  const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
+  if (error) { document.getElementById('siErr').textContent = error.message; return; }
+  currentUser = data.user;
+  closeModal('authModal');
+  updateAuthBtn();
+  toast('👋 Signed in!');
+}
+
+async function doSignUp() {
+  if (!sb) { document.getElementById('suErr').textContent = 'Auth not configured yet.'; return; }
+  const username = document.getElementById('suUser').value.trim();
+  const email    = document.getElementById('suEmail').value.trim();
+  const pass     = document.getElementById('suPass').value;
+  document.getElementById('suErr').textContent = '';
+  if (!username || !email || !pass) { document.getElementById('suErr').textContent = 'Fill in all fields.'; return; }
+  if (pass.length < 6) { document.getElementById('suErr').textContent = 'Password must be at least 6 characters.'; return; }
+
+  const { data, error } = await sb.auth.signUp({ email, password: pass, options: { data: { username } } });
+  if (error) { document.getElementById('suErr').textContent = error.message; return; }
+  currentUser = data.user;
+  // Create profile row
+  if (sb && currentUser) {
+    await sb.from('profiles').upsert({ id: currentUser.id, username, unlimited_streak: 0, unlimited_best: 0, daily_best: 0 });
+  }
+  closeModal('authModal');
+  updateAuthBtn();
+  toast('🎉 Account created! Check your email to confirm.');
+}
+
+async function doSignOut() {
+  if (sb) await sb.auth.signOut();
+  currentUser = null;
+  updateAuthBtn();
+  toast('Signed out.');
+}
+
+function updateAuthBtn() {
+  const btn = document.getElementById('authBtn');
+  if (!btn) return;
+  if (currentUser) {
+    const username = currentUser.user_metadata?.username || currentUser.email?.split('@')[0] || 'User';
+    btn.textContent = `👤 ${username}`;
+    btn.classList.remove('btn-primary');
+    btn.classList.add('btn-ghost');
+  } else {
+    btn.textContent = 'Sign In';
+    btn.classList.add('btn-primary');
+    btn.classList.remove('btn-ghost');
+  }
+}
+
+// ══════════════════════════════════════════════
+//  LEADERBOARD
+// ══════════════════════════════════════════════
+function switchLbTab(tab, btn) {
+  lbTab = tab;
+  document.querySelectorAll('.lb-tab').forEach(t=>t.classList.remove('active'));
+  btn.classList.add('active');
+  loadLeaderboard();
+}
+
+async function loadLeaderboard() {
+  const el = document.getElementById('lbContent');
+  if (!sb) {
+    el.innerHTML = '<div class="lb-empty">⚙️ Leaderboard requires Supabase setup. Coming soon!</div>';
+    return;
+  }
+  el.innerHTML = '<div class="lb-empty">Loading…</div>';
+  const col = lbTab === 'unlimited' ? 'unlimited_best' : 'daily_best';
+  const { data, error } = await sb.from('profiles').select('username,' + col).order(col, { ascending: false }).limit(10);
+  if (error || !data?.length) {
+    el.innerHTML = '<div class="lb-empty">No entries yet — be the first!</div>';
+    return;
+  }
+  const rankStyle = i => i===0?'gold':i===1?'silver':i===2?'bronze':'';
+  const myId = currentUser?.id;
+  el.innerHTML = `<div class="lb-table">` +
+    data.map((row, i) => {
+      const isMe = myId && row.id === myId;
+      return `<div class="lb-row ${isMe?'lb-you':''}">
+        <span class="lb-rank ${rankStyle(i)}">${i===0?'🥇':i===1?'🥈':i===2?'🥉':'#'+(i+1)}</span>
+        <span class="lb-name">${row.username || 'Anonymous'}${isMe?' (you)':''}</span>
+        <span class="lb-score">${row[col] ?? 0}</span>
+      </div>`;
+    }).join('') + `</div>`;
+}
+
+async function syncStreakToSupabase() {
+  if (!sb || !currentUser) return;
+  try {
+    await sb.from('profiles').upsert({
+      id: currentUser.id,
+      unlimited_streak: streak.current,
+      unlimited_best:   streak.best,
+      updated_at: new Date().toISOString()
+    }, { onConflict: 'id' });
+  } catch(e) {}
+}
+
+// ══════════════════════════════════════════════
+//  TOAST
+// ══════════════════════════════════════════════
+let _toastTimer = null;
+function toast(msg) {
+  const el = document.getElementById('toast');
+  if (!el) return;
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => el.classList.remove('show'), 2800);
+}
+
+// ══════════════════════════════════════════════
+//  BOOT
+// ══════════════════════════════════════════════
+loadStreak();
+renderStreak();
+
+// Check existing auth session
+if (sb) {
+  sb.auth.getSession().then(({ data }) => {
+    if (data?.session?.user) { currentUser = data.session.user; updateAuthBtn(); }
+  });
+  sb.auth.onAuthStateChange((_, session) => {
+    currentUser = session?.user || null;
+    updateAuthBtn();
+  });
+}
+
+loadSongs().then(() => {
+  if (pool.length) startNewGame();
+}).catch(e => {
+  document.getElementById('gameCard').innerHTML = `<div style="text-align:center;padding:30px;color:var(--error);">Failed to load songs. <button class="btn btn-ghost btn-sm" onclick="location.reload()">Retry</button></div>`;
+});
+</script>
+</body>
+</html>
