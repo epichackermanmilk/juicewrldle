@@ -352,7 +352,12 @@ const MAX_PLAYS  = 2;
 // Supabase — only init if URL is set
 let sb = null;
 if (SUPABASE_URL && SUPABASE_URL !== 'YOUR_SUPABASE_URL') {
-  try { sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY); } catch(e) {}
+  try {
+    sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    console.log('[JW] Supabase client initialized');
+  } catch(e) {
+    console.error('[JW] Supabase init failed:', e);
+  }
 }
 
 // ══════════════════════════════════════════════
@@ -946,7 +951,12 @@ async function doSignUp() {
   currentUser = data.user;
   // Create profile row
   if (sb && currentUser) {
-    await sb.from('profiles').upsert({ id: currentUser.id, username, unlimited_streak: 0, unlimited_best: 0, daily_best: 0 });
+    const { error: profErr } = await sb.from('profiles').upsert(
+      { id: currentUser.id, username, unlimited_streak: 0, unlimited_best: 0, daily_best: 0 },
+      { onConflict: 'id' }
+    );
+    if (profErr) console.error('[JW] profile create error:', profErr);
+    else console.log('[JW] profile created for', username);
   }
   closeModal('authModal');
   updateAuthBtn();
@@ -1012,15 +1022,32 @@ async function loadLeaderboard() {
 }
 
 async function syncStreakToSupabase() {
-  if (!sb || !currentUser) return;
-  try {
-    await sb.from('profiles').upsert({
-      id: currentUser.id,
-      unlimited_streak: streak.current,
-      unlimited_best:   streak.best,
-      updated_at: new Date().toISOString()
-    }, { onConflict: 'id' });
-  } catch(e) {}
+  if (!sb)          { console.warn('[JW] syncStreak: sb is null — Supabase not initialized'); return; }
+  if (!currentUser) { console.warn('[JW] syncStreak: no currentUser — not signed in'); return; }
+
+  // Fetch username so upsert never violates the NOT NULL constraint on insert path
+  let username = currentUser.user_metadata?.username || null;
+  if (!username) {
+    const { data: prof } = await sb.from('profiles').select('username').eq('id', currentUser.id).single();
+    username = prof?.username || 'unknown';
+  }
+
+  const payload = {
+    id:               currentUser.id,
+    username,
+    unlimited_streak: streak.current,
+    unlimited_best:   streak.best,
+    updated_at:       new Date().toISOString()
+  };
+  console.log('[JW] syncStreak payload:', payload);
+
+  const { data, error } = await sb.from('profiles').upsert(payload, { onConflict: 'id' });
+  if (error) {
+    console.error('[JW] syncStreak error:', error);
+    toast('⚠️ Streak sync failed: ' + error.message);
+  } else {
+    console.log('[JW] syncStreak OK:', data);
+  }
 }
 
 // ══════════════════════════════════════════════
