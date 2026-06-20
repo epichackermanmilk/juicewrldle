@@ -198,7 +198,7 @@
     </a>
     <div class="header-right">
       <a href="/" class="btn btn-ghost btn-sm">📅 Daily</a>
-      <button id="lbBtn" class="btn btn-ghost btn-sm" onclick="openModal('lbModal')">🏆 Leaderboard</button>
+      <button id="lbBtn" class="btn btn-ghost btn-sm" onclick="openModal('lbModal');loadLeaderboard()">🏆 Leaderboard</button>
       <button id="authBtn" class="btn btn-primary btn-sm" onclick="openAuthModal()">Sign In</button>
     </div>
   </header>
@@ -834,7 +834,7 @@ function render() {
         ${streakHtml}
         <div class="result-actions">
           <button class="btn btn-primary" onclick="startNewGame()">▶ Play Again</button>
-          <button class="btn btn-ghost" onclick="openModal('lbModal');loadLeaderboard()">🏆 Leaderboard</button>
+          <button class="btn btn-ghost" onclick="openModal('lbModal');loadLeaderboard();" >🏆 Leaderboard</button>
         </div>
       </div>
       <hr style="border:none;border-top:1px solid var(--border);margin:16px 0;">
@@ -993,7 +993,7 @@ async function loadLeaderboard() {
   }
   el.innerHTML = '<div class="lb-empty">Loading…</div>';
   const col = lbTab === 'unlimited' ? 'unlimited_best' : 'daily_best';
-  const { data, error } = await sb.from('profiles').select('username,' + col).order(col, { ascending: false }).limit(10);
+  const { data, error } = await sb.from('profiles').select('id,username,' + col).order(col, { ascending: false }).limit(10);
   if (error || !data?.length) {
     el.innerHTML = '<div class="lb-empty">No entries yet — be the first!</div>';
     return;
