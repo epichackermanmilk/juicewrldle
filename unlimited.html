@@ -1039,14 +1039,22 @@ async function syncStreakToSupabase() {
     unlimited_best:   streak.best,
     updated_at:       new Date().toISOString()
   };
-  console.log('[JW] syncStreak payload:', payload);
+  console.log('[JW] syncStreak uid:', currentUser.id, 'payload:', payload);
 
-  const { data, error } = await sb.from('profiles').upsert(payload, { onConflict: 'id' });
+  // First check if row exists
+  const { data: existing } = await sb.from('profiles').select('id,username,unlimited_best').eq('id', currentUser.id).single();
+  console.log('[JW] existing profile row:', existing);
+
+  const { data, error } = await sb.from('profiles').upsert(payload, { onConflict: 'id' }).select();
   if (error) {
-    console.error('[JW] syncStreak error:', error);
+    console.error('[JW] syncStreak error:', JSON.stringify(error));
     toast('⚠️ Streak sync failed: ' + error.message);
   } else {
-    console.log('[JW] syncStreak OK:', data);
+    console.log('[JW] syncStreak result rows:', data);
+    if (!data || data.length === 0) {
+      console.warn('[JW] syncStreak: upsert returned 0 rows — likely blocked by RLS');
+      toast('⚠️ Streak not saved — possible auth issue');
+    }
   }
 }
 
