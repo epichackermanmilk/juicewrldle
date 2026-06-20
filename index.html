@@ -486,10 +486,10 @@
     }
     #feedbackBtn:hover { background: rgba(168,85,247,.4); transform: translateY(-2px); }
     #feedbackOverlay {
-      position: fixed; inset: 0; background: rgba(0,0,0,.6);
-      backdrop-filter: blur(6px); z-index: 300;
+      position: fixed; inset: 0; background: rgba(0,0,0,.75);
+      z-index: 300;
       display: flex; align-items: center; justify-content: center;
-      opacity: 0; pointer-events: none; transition: opacity .2s;
+      opacity: 0; pointer-events: none; transition: opacity .15s;
     }
     #feedbackOverlay.open { opacity: 1; pointer-events: all; }
     #feedbackModal {
