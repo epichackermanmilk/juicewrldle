@@ -1258,8 +1258,20 @@ function getClueValue(key, songData) {
     case 'era':      return (s.era && s.era.name) || s.era || '';
     case 'length':   return s.length || '';
     case 'letters':  return nameCore.replace(/\s/g,'').length + ' letters';
-    case 'first':    return name[0] ? name[0].toUpperCase() : '';
-    case 'last':     return nameCore[nameCore.length-1] ? nameCore[nameCore.length-1].toUpperCase() : '';
+    case 'first': {
+      // First actual letter (skip leading non-letter chars like !)
+      for (const c of name) { if (/[a-zA-Z]/.test(c)) return c.toUpperCase(); }
+      // Fallback: only use non-letter if the whole name has no letters
+      return name[0] ? name[0].toUpperCase() : '';
+    }
+    case 'last': {
+      // Last actual letter from the core name (skip trailing punctuation like !)
+      for (let i = nameCore.length - 1; i >= 0; i--) {
+        if (/[a-zA-Z]/.test(nameCore[i])) return nameCore[i].toUpperCase();
+      }
+      // Fallback: only use non-letter if the whole name has no letters
+      return nameCore[nameCore.length - 1] ? nameCore[nameCore.length - 1].toUpperCase() : '';
+    }
     case 'producer': return s.producers || '';
     default:         return '';
   }
