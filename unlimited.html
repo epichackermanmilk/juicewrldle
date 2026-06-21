@@ -389,8 +389,8 @@ let streak = { current: 0, best: 0, played: 0 };
 const STREAK_KEY  = 'jwdle_unlimited_streak_v1';
 const STATS_KEY   = 'jwdle_unlimited_stats_v1';
 
-const CLUE_KEYS   = ['era','length','producers','category','release_date'];
-const CLUE_LABELS = { era:'Era', length:'Duration', producers:'Producers', category:'Category', release_date:'Release Date' };
+const CLUE_KEYS   = ['era','length','letters','first','last','producer'];
+const CLUE_LABELS = { era:'Era', length:'Length', letters:'Letters', first:'First Letter', last:'Last Letter', producer:'Producer' };
 
 function track(ev, p) { try { if (typeof gtag==='function') gtag('event',ev,p||{}); } catch(e){} }
 
@@ -650,13 +650,27 @@ function checkGuess(input, songEntry) {
 }
 
 function getClueValue(key, s) {
-  switch(key) {
-    case 'era':          return s.era || '?';
-    case 'length':       return s.length || '?';
-    case 'producers':    return s.producers || '?';
-    case 'category':     return s.category || '?';
-    case 'release_date': return s.release_date || '?';
-    default:             return '?';
+  const name     = (s.name || '').trim();
+  // Strip version suffixes like (v1), [leak], etc. for letter hints
+  const nameCore = name.replace(/\s*[\(\[][^\)\]]*[\)\]]/g, '').trim();
+  switch (key) {
+    case 'era':      return s.era || '?';
+    case 'length':   return s.length   || '?'; // not in songs.json — shows ? unless API enriches it
+    case 'producer': return s.producers || '?'; // same
+    case 'letters':  return nameCore.replace(/\s/g, '').length + ' letters';
+    case 'first': {
+      // First actual letter (skip leading non-letter chars)
+      for (const c of name) { if (/[a-zA-Z]/.test(c)) return c.toUpperCase(); }
+      return name[0] ? name[0].toUpperCase() : '?';
+    }
+    case 'last': {
+      // Last actual letter (skip trailing punctuation)
+      for (let i = nameCore.length - 1; i >= 0; i--) {
+        if (/[a-zA-Z]/.test(nameCore[i])) return nameCore[i].toUpperCase();
+      }
+      return nameCore[nameCore.length - 1] ? nameCore[nameCore.length - 1].toUpperCase() : '?';
+    }
+    default: return '?';
   }
 }
 
