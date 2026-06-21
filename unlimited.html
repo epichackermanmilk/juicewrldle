@@ -690,11 +690,50 @@ function startNewGame() {
     hintsUnlocked: 0,
     hintsRevealed: [],
     playCount: 0,
-    startSec: Math.floor(Math.random() * 30), // random start within song
+    startSec: Math.floor(Math.random() * 30),
   };
   track('game_start', { song_name: song.name, song_era: song.era||'?', mode: 'unlimited' });
   preloadAudio();
   render();
+  // Enrich with API metadata (length, producers) in background — re-render hints when ready
+  enrichSongFromAPI(song).then(enriched => { if (enriched) render(); });
+}
+
+// Fetch length + producers from the API for a songs.json entry (background, non-blocking)
+async function enrichSongFromAPI(s) {
+  try {
+    // Try the search endpoint first
+    const enc = encodeURIComponent(s.name);
+    const r = await fetch(`${API_BASE}/songs/?search=${enc}&limit=5`);
+    if (r.ok) {
+      const data = await r.json();
+      const results = Array.isArray(data) ? data : (data.results || data.songs || []);
+      const match = results.find(m => normalize(m.name) === normalize(s.name)
+        || (s.titles||[]).some(t => normalize(t) === normalize(m.name)));
+      if (match) {
+        if (match.length)    s.length    = match.length;
+        if (match.producers) s.producers = match.producers;
+        return true;
+      }
+    }
+  } catch(e) {}
+
+  // Fallback: try /radio/random/ up to 4 times and use if name matches
+  for (let i = 0; i < 4; i++) {
+    try {
+      const r = await fetch(`${API_BASE}/radio/random/`);
+      if (!r.ok) break;
+      const data = await r.json();
+      const m = data.song || data;
+      if (normalize(m.name) === normalize(s.name) ||
+          (s.titles||[]).some(t => normalize(t) === normalize(m.name))) {
+        if (m.length)    s.length    = m.length;
+        if (m.producers) s.producers = m.producers;
+        return true;
+      }
+    } catch(e) { break; }
+  }
+  return false;
 }
 
 function doGuess() {
